@@ -1,70 +1,91 @@
 # IndoPharm — Regulatory Framework & Compliance Matrix
 
-**Document Classification:** Legal & Regulatory Governance  
+**Document Classification:** Legal, Clinical & Regulatory Governance  
 **Scope:** Cross-Border Pharmaceutical Sourcing (India) & Importation/Dispensing (United States)  
-**Status Standard:** Strict Fact Attribution; No Unsupported Certifications or Regulatory Claims  
+**Standard:** Truth-in-Healthcare Communications; Non-Binary Regulatory Classification  
 
 ---
 
-## 1. Compliance Principles & Governance Standard
+## 1. Regulatory Communications & UX Principles
 
-IndoPharm operates under a **Truth-in-Regulatory-Affairs** policy:
-1. **Zero Unsubstantiated Claims:** The platform does **not** claim that medications are "FDA approved for import", "universally legal without restriction", or "exempt from state prescription laws" without documented legal verification.
-2. **Standardized Status Classification:** Every regulatory domain, legal question, and operational process must be categorized using one of four strict labels:
-   - `[CONFIRMED]`: Verified by statutory text, official agency guidance, or formal legal opinion on file.
-   - `[TO BE VERIFIED]`: Plausible operational mechanism that requires empirical verification with customs brokers, state boards, or logistics carriers.
-   - `[REQUIRES LEGAL/REGULATORY REVIEW]`: Ambiguous, high-risk, or evolving legal doctrine requiring formal counsel review before launch.
-   - `[NOT IMPLEMENTED]`: Capability or market structure not currently active in production.
+### 1.1 Forbidden Claims & Phrases
+Under federal consumer protection standards and FDA misbranding laws (21 U.S.C. § 352), IndoPharm strictly forbids the use of any deceptive or unverified blanket claims across all web, mobile, and documentation interfaces.
 
----
+**EXPLICITLY PROHIBITED:**
+- ❌ "FDA Approved" (unless referring strictly to an official U.S. ANDA/NDA referenced by exact number for an active reference drug)
+- ❌ "100% Legal"
+- ❌ "FDA Certified" (The FDA does not issue certificates to foreign pharmacies or websites)
+- ❌ "Safe for Everyone"
+- ❌ "Prescription Not Required"
 
-## 2. United States Federal Regulatory Landscape
-
-### 2.1 FDA Personal Importation Policy (PIP) & Compliance Matrix
-- **Statutory Baseline:** Under Section 801(a) of the Federal Food, Drug, and Cosmetic Act (FD&C Act, 21 U.S.C. § 381(a)), all drugs imported into the United States must meet FDA standards for approval, labeling, and manufacturing quality.
-- **FDA Regulatory Discretion (CPG Sec. 110.300):** The FDA exercises enforcement discretion regarding personal importation under strict conditions.
-
-| Regulatory Domain | Operational Rule / Question | Status |
-| :--- | :--- | :--- |
-| **Prescription Mandate** | Every prescription drug order requires an authentic, unexpired prescription issued by a licensed U.S. physician or qualified healthcare provider with an active NPI. | `[CONFIRMED]` |
-| **Quantity Limitation** | The quantity imported per shipment must not exceed a 90-day supply (three-month personal use limit) for personal maintenance therapy. | `[CONFIRMED]` |
-| **Controlled Substances Ban** | Under the Controlled Substances Act (21 U.S.C. § 801 et seq.) and DEA regulations (21 CFR Part 1312), Schedule II, III, IV, and V medications are **strictly prohibited** from personal importation by mail or courier. IndoPharm explicitly blocks all controlled substances. | `[CONFIRMED]` |
-| **Unapproved Drug Status (Section 505)** | Foreign versions of FDA-approved drugs may technically be deemed "unapproved" under 21 U.S.C. § 355 if labeling, manufacturing site, or packaging differs from the U.S. NDA/ANDA approval, even if chemically bioequivalent. | `[REQUIRES LEGAL/REGULATORY REVIEW]` |
-| **Customs & Border Protection (CBP) Detention Risk** | CBP and FDA inspectors at International Mail Facilities (IMFs) and Express Consignment Carrier Facilities (ECCFs) hold statutory authority to detain and refuse admission to drug imports. Legal counsel must define customer notification and refund protocols. | `[REQUIRES LEGAL/REGULATORY REVIEW]` |
-| **Section 321 / De Minimis Exemption** | Whether personal pharmaceutical shipments valued under $800 qualify under 19 U.S.C. § 1321 de minimis entry without formal entry summary, or if partner government agency (PGA) FDA flags trigger mandatory data filing. | `[TO BE VERIFIED]` |
+### 1.2 Approved Nuanced Language
+All customer-facing and clinical communications must utilize verified, factual disclosures:
+- ✅ *"Information provided for reference"*
+- ✅ *"Requirements may vary based on destination and prescriber jurisdiction"*
+- ✅ *"Additional verification may be required by clinical pharmacist before dispensing"*
+- ✅ *"Facilitated under FDA Personal Importation policy guidelines (CPG Sec. 110.300)"*
 
 ---
 
-## 3. Indian Export & Manufacturing Compliance
+## 2. Five-Tier Product Classification Framework
 
-### 3.1 Central Drugs Standard Control Organisation (CDSCO) & DGCX
-- **Manufacturing Standards:** Medications sourced must originate from facilities registered with the CDSCO and holding valid WHO-GMP (Good Manufacturing Practices) or international regulatory audit credentials.
+No product is ever assigned an assumed regulatory classification. Every entry must be verified through authoritative regulatory databases (FDA Orange Book, NDC Directory, CDSCO approvals) and documented by compliance officers.
 
-| Operational Area | Requirement / Question | Status |
-| :--- | :--- | :--- |
-| **Valid Export License (Form 29 / No Objection Certificate)** | Verification of exporter's IEC (Import Export Code), wholesale drug license under Drugs & Cosmetics Act 1940, and specific NOC from State Licensing Authority for export. | `[TO BE VERIFIED]` |
-| **Batch Certificate of Analysis (CoA)** | Requirement that every dispatched shipment includes a verified manufacturer Certificate of Analysis matching the active lot number. | `[CONFIRMED]` |
-| **Schedule X / Narcotic Exclusion** | Absolute prohibition against handling Schedule X or NDPS (Narcotic Drugs and Psychotropic Substances) medications for export without sovereign government-to-government bilateral permits. | `[CONFIRMED]` |
-| **India Customs Bonded Warehousing** | Verification of temperature-monitored, bonded export consolidation facility in proximity to international air hubs (BOM / DEL). | `[TO BE VERIFIED]` |
-
----
-
-## 4. State-by-State Pharmacy Board Jurisdictions (U.S.)
-
-The U.S. regulates the dispensing of prescription drugs at the state level through State Boards of Pharmacy.
-
-| Jurisdictional Domain | Requirement / Consideration | Status |
-| :--- | :--- | :--- |
-| **Non-Resident Pharmacy Licensure** | If dispensing or facilitating delivery into U.S. states, whether IndoPharm operates as a technology facilitator partnering with a licensed U.S. non-resident pharmacy or requires individual state permits. | `[REQUIRES LEGAL/REGULATORY REVIEW]` |
-| **Prescription Verification Authenticity** | Mechanism for verifying prescribing practitioner authority, patient-practitioner relationship, and preventing counterfeit digital prescription uploads. | `[CONFIRMED]` |
-| **Direct Pharmacist Consultation** | Mandatory provision of a toll-free telephone access line for patients to speak with a licensed clinical pharmacist regarding drug interactions, side effects, and administration instructions. | `[CONFIRMED]` |
-| **State Drug Repository Programs** | Potential interaction or alignment with state-sponsored affordable drug importation programs (e.g., Section 804 Importation Programs - SIPs). | `[NOT IMPLEMENTED]` |
+| Classification Tier | Operational Definition | Clinical Requirements | Order Eligibility |
+| :--- | :--- | :--- | :--- |
+| **`OTC` (Over-The-Counter)** | Medications authorized for direct consumer purchase without practitioner supervision under applicable monographs. | Age verification; standard consumer warnings. | Eligible for direct purchase and personal importation. |
+| **`PRESCRIPTION`** | Legend drugs requiring medical diagnosis and authorization by a licensed U.S. healthcare practitioner. | Valid, unexpired U.S. prescription; Prescriber NPI check; 90-day personal supply limit. | Eligible upon clinical pharmacist review & approval. |
+| **`SUPPLEMENT / OTHER`** | Nutritional supplements, botanicals, and vitamins governed under DSHEA regulations. | Labeling review; facility registration verification. | Eligible subject to customs personal use limits. |
+| **`RESTRICTED / NOT ELIGIBLE`** | Strictly barred items: DEA Schedule II–V controlled substances, narrow therapeutic index (NTI) drugs requiring acute titration, temperature-unstable biologics, and recall-listed drugs. | Automatic block; referral to domestic emergency healthcare. | **Completely barred from platform.** |
+| **`UNVERIFIED`** | Products undergoing sourcing audit, lab CoA assay evaluation, or pending legal verification. | Pending compliance officer audit. | **Hidden from catalog; not purchasable.** |
 
 ---
 
-## 5. Required Verification Areas Before Production Launch
+## 3. U.S. Regulatory Matrix Architecture
 
-1. **Formal Retainer of Specialized FDA Regulatory Counsel:** Counsel must review consumer terms of service, packaging labeling, customs declarations, and website transparency copy.
-2. **Carrier Compliance Onboarding:** Formal courier agreements with international carriers (e.g., DHL Express, FedEx Trade Networks) regarding express consignment personal importation documentation.
-3. **Medical Advisory Board Review:** Establishment of an independent clinical board to curate the active catalog and evaluate drug bioequivalence, safety margins, and narrow therapeutic index (NTI) medications (e.g., Warfarin, Levothyroxine) that require dosage monitoring.
-4. **Adverse Event Reporting (AER):** Implementation of standard operating procedures (SOP) for receiving, logging, and reporting suspected adverse drug events (ADEs) to manufacturers and regulatory bodies.
+The platform rejects binary `available = true / false` logic. Regulatory admissibility is evaluated as a multi-stage data pipeline:
+
+```
+[Product]
+    │
+    ▼
+[Destination Jurisdiction] (U.S. Federal + Recipient State Board of Pharmacy)
+    │
+    ▼
+[Regulatory Status] ──► (AVAILABLE | REVIEW REQUIRED | RESTRICTED | NOT AVAILABLE | NOT VERIFIED)
+    │
+    ▼
+[Prescription Requirement] ──► (Valid U.S. Rx Mandatory | OTC Exemption)
+    │
+    ▼
+[Importer Entity] ──► (Patient as Importer of Record / Licensed Pharmacy Partner)
+    │
+    ▼
+[Fulfillment Route] ──► (Bonded Express Consignment Courier | Licensed Non-Resident Mail)
+    │
+    ▼
+[Allowed Purchase Workflow] ──► (Instant Checkout | Pharmacist Review Queue | Blocked Flow)
+```
+
+### 3.1 Non-Binary Status Definitions
+
+1. **`AVAILABLE`**: Verified generic maintenance medication; active U.S. prescription required; meets all personal importation criteria.
+2. **`REVIEW REQUIRED`**: Medication requires secondary clinical pharmacist scrutiny (e.g., potential drug-drug interaction flag, high-dosage review, or state-specific tele-prescribing rule).
+3. **`RESTRICTED`**: Medication cannot be imported into specific U.S. states due to non-resident pharmacy licensure boundaries or specific packaging regulations.
+4. **`NOT AVAILABLE`**: Product currently out of verified batch inventory, under supply disruption, or undergoing lot inspection.
+5. **`NOT VERIFIED`**: Manufacturing facility or batch CoA is awaiting documentation confirmation. Cannot be ordered.
+
+---
+
+## 4. Statutory Legal Authorities & Verification Matrix
+
+### 4.1 United States Legal Matrix
+- **FDA Personal Importation Policy (CPG Sec. 110.300):** Enforcement discretion permitting personal imports for non-controlled maintenance therapy (max 90 days). `[CONFIRMED]`
+- **Controlled Substances Act (21 U.S.C. § 801):** Absolute ban on mail-order importation of Schedule II–V substances. `[CONFIRMED]`
+- **Section 321 / De Minimis Entry (19 U.S.C. § 1321):** Customs entry procedures for low-value personal shipments. `[TO BE VERIFIED with CBP Broker]`
+- **State Non-Resident Pharmacy Licensure:** State-by-state mail-order dispensing permit requirements. `[REQUIRES LEGAL/REGULATORY REVIEW]`
+
+### 4.2 Indian Export Legal Matrix
+- **Drugs and Cosmetics Act, 1940 & Rules 1945:** Licensing requirements for export manufacturing and wholesale distribution. `[CONFIRMED]`
+- **Certificate of Analysis (CoA) Verification:** Requirement for batch testing and active ingredient assay before dispatch. `[CONFIRMED]`
+- **CDSCO Export No Objection Certificate (NOC):** Documentation protocol for international shipment release. `[TO BE VERIFIED]`

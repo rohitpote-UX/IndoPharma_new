@@ -1,5 +1,5 @@
 import React from 'react';
-import { Header } from '@/components/layout/Header';
+import { Header } from '@/components/navigation/Header';
 import { Footer } from '@/components/layout/Footer';
 
 export default function StoreLayout({

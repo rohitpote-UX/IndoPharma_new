@@ -1,89 +1,112 @@
-# IndoPharm — Business Model & Economic Unit Economics
+# IndoPharm — Business Model & Supply Chain Governance
 
-**Version:** 1.0.0  
-**Corridor:** India (Origin Sourcing) → United States (Primary Market)  
-**Expansion Horizon:** Canada, United Kingdom, European Union  
-
----
-
-## 1. Executive Summary & Market Inefficiency
-
-The United States spends over $600 billion annually on prescription medications. Despite generic drugs accounting for ~90% of all prescriptions filled, retail generic prices in the U.S. fluctuate wildly—often inflated by:
-1. **Pharmacy Benefit Manager (PBM) Rebates & Spread Pricing:** Intermediaries extract 30%–60% margins without manufacturing or shipping physical medicine.
-2. **Wholesaler Triopoly:** McKesson, AmerisourceBergen (Cencora), and Cardinal Health dominate wholesale distribution with compounding markup.
-3. **Retail Pharmacy Overhead:** High physical footprint costs passed directly to cash-paying and high-deductible patients.
-
-Meanwhile, India is the premier global powerhouse of pharmaceutical manufacturing:
-- Houses over 600 US-FDA registered manufacturing facilities (the highest outside the U.S.).
-- Manufactures ~40% of all generic formulations consumed by U.S. patients.
-- Operates with massive economies of scale and highly optimized chemical synthesis infrastructure.
-
-**IndoPharm's Arbitrage:** By disintermediating PBMs and wholesale markups and establishing a direct, digitally auditable corridor from audited Indian manufacturers to U.S. patients under valid prescriptions, IndoPharm delivers 60%–85% patient savings while capturing healthy gross margins.
+**Version:** 2.0.0  
+**Status:** Canonical Foundation Specification  
+**Classification:** Business Architecture & Strategic Operations  
 
 ---
 
-## 2. Supply Chain & Cost of Goods Sold (COGS) Architecture
+## 1. Executive Summary & Core Business Arbitrage
+
+IndoPharm operates an institutional cross-border pharmaceutical commerce corridor connecting audited Indian pharmaceutical manufacturing infrastructure directly with U.S. chronic maintenance patients.
+
+By removing unnecessary intermediaries—such as Pharmacy Benefit Manager (PBM) spread pricing, secondary domestic brokers, and physical retail overhead—the platform delivers **sustainable 60%–85% patient savings** while maintaining a solid gross margin structure (25%–35%) and full regulatory audibility.
+
+---
+
+## 2. Six-Tier Configurable Responsibility Matrix
+
+The legal, operational, and commercial obligations across the India → USA corridor are decoupled into 6 distinct, configurable tiers. This decoupling ensures IndoPharm can dynamically adapt its operating model (e.g., direct-to-patient personal importation, 503B compounding distribution, or wholesale licensed importer partnerships) as regulatory jurisdictions evolve.
 
 ```
-[Indian Manufacturer]
-      │  (FOB Factory Gate Price: e.g., $4.50 for 90 tablets)
-      ▼
-[IndoPharm Sourcing & Bonded Hub]
-      │  (Quality Audit, Batch CoA Verification, Tamper-Pack: $1.80)
-      ▼
-[International Bonded Air Express]
-      │  (Temperature-controlled express air freight: $7.20)
-      ▼
-[U.S. Customs Brokerage & Section 321 / Personal Import Processing]
-      │  (Customs declaration filing & processing: $2.50)
-      ▼
-[U.S. Clinical Verification & Dispensing Partner]
-      │  (Pharmacist Rx scrutiny, prescriber NPI verification: $5.00)
-      ▼
-[U.S. Domestic Final-Mile Carrier]
-      │  (USPS Priority / FedEx Ground delivery with tracking: $4.50)
-      ▼
-[U.S. Patient Front Door]
++-----------------------------------------------------------------------------------------+
+|                                1. THE PLATFORM COMPANY                                  |
+|  - Technology core, patient portal, identity verification, and financial escrow ledger. |
+|  - Brand governance, transparent pricing engine, and clinical verification software.    |
++-----------------------------------------------------------------------------------------+
+                                             │
+                                             ▼
++-----------------------------------------------------------------------------------------+
+|                              2. MANUFACTURER / SUPPLIER                                 |
+|  - WHO-GMP certified & US-FDA audited manufacturing facilities in India.                 |
+|  - Production of active pharmaceutical ingredients (APIs) and finished generic dosage.   |
+|  - Release of batch Certificate of Analysis (CoA) and tamper-evident lot sealing.        |
++-----------------------------------------------------------------------------------------+
+                                             │
+                                             ▼
++-----------------------------------------------------------------------------------------+
+|                              3. INDIAN OPERATIONS / WAREHOUSE                            |
+|  - CDSCO-licensed export consolidation hub (proximity to BOM/DEL air hubs).             |
+|  - Climate-controlled storage (USP controlled room temperature: 20°C to 25°C).           |
+|  - Barcode scanning, lot-to-order serialization, and international packing.             |
++-----------------------------------------------------------------------------------------+
+                                             │
+                                             ▼
++-----------------------------------------------------------------------------------------+
+|                                      4. EXPORT NODE                                     |
+|  - Indian Customs clearance, DGCX filing, and export shipping manifest documentation.   |
+|  - Bonded international air cargo dispatch (DHL Express / FedEx Cross-Border).           |
++-----------------------------------------------------------------------------------------+
+                                             │
+                                             ▼
++-----------------------------------------------------------------------------------------+
+|                         5. U.S. IMPORTER / FULFILLMENT STRUCTURE                        |
+|  - Port of Entry clearance (JFK, ORD, LAX) under FDA Personal Importation (CPG 110.300) |
+|    or licensed U.S. Non-Resident Dispensing Pharmacy partner.                           |
+|  - Final-mile carrier handoff (USPS Priority / FedEx Home Delivery).                    |
++-----------------------------------------------------------------------------------------+
+                                             │
+                                             ▼
++-----------------------------------------------------------------------------------------+
+|                                  6. THE U.S. CUSTOMER                                   |
+|  - Submission of authentic, unexpired U.S. prescription from licensed physician (NPI).  |
+|  - Personal importation declaration for personal maintenance therapy (max 90-day cap).  |
+|  - Doorstep reception with delivery confirmation and clinical pharmacist access line.   |
++-----------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 3. Representative Unit Economics (90-Day Maintenance Supply)
+## 3. Tier Responsibility Breakdown
 
-| Economic Component | Traditional U.S. Cash Retail | IndoPharm Direct Model |
-| :--- | :--- | :--- |
-| **Typical Medication (e.g., Atorvastatin 20mg 90ct)** | $124.00 | **$29.50** |
-| Manufacturer FOB Cost (India) | $3.50 | $3.50 |
-| Cross-Border Air Freight & Bonded Logistics | $0.00 (bulk sea import) | $6.50 |
-| Quality Control & Batch CoA Verification | Included in wholesale | $1.50 |
-| U.S. Pharmacist Review & Dispensing Fee | $15.00 | $4.50 |
-| U.S. Customs & Import Processing | $1.00 | $2.00 |
-| Final-Mile Domestic Carrier | $0.00 (in-store pickup) | $4.00 |
-| Total Cost of Delivery | $19.50 | **$22.00** |
-| PBM Spread & Intermediary Markup | $75.00 | **$0.00** |
-| Retailer Physical Overhead Markup | $29.50 | **$0.00** |
-| **Gross Profit per 90-Day Order** | $104.50 (captured by middlemen) | **$7.50 (25.4% Net Gross Margin)** |
-| **Patient Savings** | $0 (Base) | **$94.50 (76.2% Savings)** |
+| Operating Tier | Primary Entities | Legal & Regulatory Responsibilities | Configurable Modes |
+| :--- | :--- | :--- | :--- |
+| **1. Company** | IndoPharm Global Inc. | Software platform, data encryption (HIPAA), customer service, price transparency, escrow ledger. | Direct Platform vs. Managed Marketplace. |
+| **2. Manufacturer** | Audited Indian Pharma (e.g., Sun Pharma, Cipla, Dr. Reddy's) | Batch testing, assay purity, stability documentation, active lot serialization. | Direct Supply Contract vs. Authorized Wholesale Consolidator. |
+| **3. Warehouse** | Bonded Logistics Hub (Mumbai/Delhi) | Good Distribution Practices (GDP), temperature monitoring, picking validation against prescription lines. | Proprietary Facility vs. Dedicated 3PL Bonded Space. |
+| **4. Export** | Licensed Exporter of Record | Compliance with Indian Drugs & Cosmetics Act 1940, Form 29 / NOC export clearance, Air Waybill generation. | Express Consignment vs. Commercial Bonded Freight. |
+| **5. U.S. Importer / Fulfillment** | Customs Broker / Licensed Dispensing Partner | FDA Section 801(a) admissibility filing, CBP Form 7501/Section 321 de minimis entry, domestic carrier tracking. | Personal Importation Courier vs. Licensed Non-Resident Pharmacy Partner. |
+| **6. Customer** | U.S. Patient / Family Caregiver | Valid U.S. prescriber NPI, adherence to 90-day personal supply limitation, non-resale certification. | Cash-Pay Patient vs. Self-Insured Employer Carve-out. |
 
 ---
 
-## 4. Revenue Streams
+## 4. Transparent Landed-Cost Breakdown
 
-1. **Direct Prescription Fulfillment (Core):** Revenue recognized on confirmed fulfillment of prescribed 90-day and 180-day generic medication orders.
-2. **Auto-Refill Subscription Membership:** Optional automated replenishment offering an additional 5% discount, recurring on day 75 of a 90-day cycle to ensure continuity of chronic care.
-3. **B2B Employer & Self-Insured Plan Partnership (Phase 3):** Providing self-insured employers carve-out pharmacy benefits for their workforce's chronic maintenance medications.
-4. **Certificate of Analysis (CoA) & Batch Traceability API:** Licensing supply chain verification technology to institutional international buyers.
+Rather than hiding distributor rebates or compounding markups, IndoPharm itemizes costs on every order:
+
+```
+Total Patient Cost = FOB Factory Gate (India)
+                   + Bonded International Air Cargo
+                   + U.S. Customs Brokerage & Entry Filing
+                   + Clinical Pharmacist Review & Dispensing Fee
+                   + Domestic Delivery (Last Mile)
+```
+
+### Representative Cost Model (90-Day Supply Example)
+- **FOB Manufacturing Cost:** $3.50
+- **International Air Express (Temperature Monitored):** $6.50
+- **U.S. Customs Filing & Regulatory Processing:** $2.50
+- **Clinical Pharmacist Verification Fee:** $4.50
+- **Domestic Carrier Priority Shipping:** $4.50
+- **Total Patient Landed Price:** **$21.50**
+- **Comparable U.S. Retail Cash Benchmark:** $124.00
+- **Patient Savings:** **$102.50 (82.6%)**
 
 ---
 
-## 5. Customer Acquisition, Retention & Referral Flywheel
+## 5. Retention, Refills & Referral Flywheel
 
-### 5.1 Customer Acquisition Cost (CAC) Strategy
-- **Organic Search / High-Intent SEO:** Educational content around drug pricing, generic alternatives, FDA personal importation policies, and exact price comparisons.
-- **Physician & Clinic Referrals:** Outreach to concierge medical practices, direct primary care (DPC) physicians, and community health centers serving underinsured populations.
-- **P2P Patient Advocacy:** Chronic illness support groups and advocacy forums where patients openly share out-of-pocket pricing challenges.
-
-### 5.2 Referral & Retention Architecture
-- **Two-Sided Referral Incentive:** "$20 toward your next 90-day refill for every friend who uploads a verified prescription and completes their first order; friend gets $20 off."
-- **Adherence Reminders:** Proactive SMS/email refill alerts synced to the patient's remaining tablet count.
-- **Zero-Friction Transfer:** One-click prescription re-upload and automatic doctor re-authorization requests when refills expire.
+1. **Chronic Maintenance Alignment:** Focus exclusively on 90-day maintenance therapies (Cardiovascular, Diabetes, Endocrine, Gastrointestinal) where patients reorder 4 times annually.
+2. **Predictive Refill Triggers:** Proactive SMS/email refill alerts deployed on Day 75 of a 90-day cycle to ensure zero missed doses during international transit.
+3. **Two-Sided Patient Advocacy:** "$20 toward next refill for both referrer and referred patient upon valid prescription approval."
+4. **Employer Health Plan Integration (Future Horizon):** Providing self-insured U.S. employers carve-out generic maintenance coverage with direct savings reports.
