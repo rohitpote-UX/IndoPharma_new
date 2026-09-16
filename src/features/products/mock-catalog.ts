@@ -1,0 +1,130 @@
+/**
+ * ==============================================================================
+ * INDOPHARM — MOCK CATALOG FIXTURES (DEVELOPMENT / PLACEHOLDER)
+ * ==============================================================================
+ * Synthetic test fixtures for Phase 0 UI preview and test suites.
+ * Contains no unsupported medical claims or unverified credentials.
+ * ==============================================================================
+ */
+
+import { Product } from '@/types';
+
+export const MOCK_PRODUCTS: Product[] = [
+  {
+    id: 'prod-atorvastatin-20mg',
+    name: 'Atorvastatin Calcium Tablets',
+    brandReferenceName: 'Generic for Lipitor®',
+    slug: 'atorvastatin-calcium-20mg',
+    activeIngredient: 'Atorvastatin Calcium',
+    strength: '20 mg',
+    dosageForm: 'Oral Film-Coated Tablet',
+    packageSize: 90,
+    ndcEquivalent: '00071-0156-23',
+    description:
+      'HMG-CoA reductase inhibitor indicated as an adjunct to diet to reduce elevated total cholesterol, LDL-C, and triglycerides in adults.',
+    storageConditions: 'Store at 20°C to 25°C (68°F to 77°F); excursions permitted between 15°C and 30°C.',
+    fobPriceUsd: 3.50,
+    retailPriceUsd: 29.50,
+    usAverageCashPrice: 124.00,
+    isControlledSubstance: false,
+    requiresPrescription: true,
+    manufacturer: {
+      id: 'mfg-sun-pharma',
+      name: 'Sun Pharma Industries Ltd',
+      cdscoLicenseNumber: 'CDSCO-MH-2018-9941',
+      usFdaRegistrationNumber: 'FDA-FEI-3002809112',
+      facilityCity: 'Halol',
+      facilityState: 'Gujarat, India',
+      whoGmpCertified: true,
+      verifiedAt: new Date('2024-01-10'),
+    },
+    batch: {
+      id: 'batch-2026-at20-941',
+      productId: 'prod-atorvastatin-20mg',
+      lotNumber: 'LOT-2026-AT20-941',
+      manufactureDate: '2026-01-15',
+      expirationDate: '2028-01-14',
+      purityPercentage: 99.85,
+      coaDocumentUrl: '/mock/coa/lot-2026-at20-941.pdf',
+      releasedByQcOfficer: 'Dr. V. Raman, QA Lead',
+    },
+  },
+  {
+    id: 'prod-metformin-500mg-er',
+    name: 'Metformin Hydrochloride Extended-Release Tablets',
+    brandReferenceName: 'Generic for Glucophage XR®',
+    slug: 'metformin-hcl-500mg-er',
+    activeIngredient: 'Metformin Hydrochloride',
+    strength: '500 mg',
+    dosageForm: 'Extended-Release Tablet',
+    packageSize: 90,
+    ndcEquivalent: '00087-6063-05',
+    description:
+      'Biguanide indicated as an adjunct to diet and exercise to improve glycemic control in adults with type 2 diabetes mellitus.',
+    storageConditions: 'Store at 20°C to 25°C (68°F to 77°F). Protect from light and moisture.',
+    fobPriceUsd: 2.80,
+    retailPriceUsd: 22.00,
+    usAverageCashPrice: 85.00,
+    isControlledSubstance: false,
+    requiresPrescription: true,
+    manufacturer: {
+      id: 'mfg-cipla',
+      name: 'Cipla Ltd',
+      cdscoLicenseNumber: 'CDSCO-GA-2019-4812',
+      usFdaRegistrationNumber: 'FDA-FEI-3004819001',
+      facilityCity: 'Kurkumbh',
+      facilityState: 'Maharashtra, India',
+      whoGmpCertified: true,
+      verifiedAt: new Date('2024-03-22'),
+    },
+    batch: {
+      id: 'batch-2026-mf500-112',
+      productId: 'prod-metformin-500mg-er',
+      lotNumber: 'LOT-2026-MF500-112',
+      manufactureDate: '2026-02-01',
+      expirationDate: '2028-01-31',
+      purityPercentage: 99.92,
+      coaDocumentUrl: '/mock/coa/lot-2026-mf500-112.pdf',
+      releasedByQcOfficer: 'P. Deshmukh, QC Director',
+    },
+  },
+  {
+    id: 'prod-lisinopril-20mg',
+    name: 'Lisinopril Tablets',
+    brandReferenceName: 'Generic for Prinivil® / Zestril®',
+    slug: 'lisinopril-20mg',
+    activeIngredient: 'Lisinopril',
+    strength: '20 mg',
+    dosageForm: 'Oral Tablet',
+    packageSize: 90,
+    ndcEquivalent: '00006-0207-58',
+    description:
+      'Angiotensin-converting enzyme (ACE) inhibitor indicated for the treatment of hypertension in adult patients.',
+    storageConditions: 'Store at controlled room temperature 20°C to 25°C (68°F to 77°F).',
+    fobPriceUsd: 2.20,
+    retailPriceUsd: 19.50,
+    usAverageCashPrice: 78.00,
+    isControlledSubstance: false,
+    requiresPrescription: true,
+    manufacturer: {
+      id: 'mfg-dr-reddy',
+      name: "Dr. Reddy's Laboratories Ltd",
+      cdscoLicenseNumber: 'CDSCO-TG-2017-3104',
+      usFdaRegistrationNumber: 'FDA-FEI-3001844910',
+      facilityCity: 'Hyderabad',
+      facilityState: 'Telangana, India',
+      whoGmpCertified: true,
+      verifiedAt: new Date('2023-11-18'),
+    },
+    batch: {
+      id: 'batch-2026-ls20-305',
+      productId: 'prod-lisinopril-20mg',
+      lotNumber: 'LOT-2026-LS20-305',
+      manufactureDate: '2026-01-20',
+      expirationDate: '2028-01-19',
+      purityPercentage: 99.78,
+      coaDocumentUrl: '/mock/coa/lot-2026-ls20-305.pdf',
+      releasedByQcOfficer: 'K. S. Reddy, Chief Analyst',
+    },
+  },
+];

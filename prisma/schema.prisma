@@ -1,0 +1,416 @@
+// ==============================================================================
+// INDOPHARM — PRISMA SCHEMA DEFINITION
+// ==============================================================================
+// Database: PostgreSQL 16+
+// Target: High-Integrity Cross-Border Pharmaceutical Commerce
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  PATIENT
+  CLINICAL_PHARMACIST
+  OPS_WAREHOUSE
+  COMPLIANCE_ADMIN
+  SUPPORT_AGENT
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+}
+
+enum PrescriptionStatus {
+  PENDING_REVIEW
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum OrderStatus {
+  PENDING_PRESCRIPTION
+  UNDER_CLINICAL_REVIEW
+  CONFIRMED_PICKING
+  EXPORT_CUSTOMS
+  IN_TRANSIT_AIR
+  US_CUSTOMS_CLEARANCE
+  DOMESTIC_DELIVERY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  DRAFT
+  REQUIRES_PAYMENT_METHOD
+  REQUIRES_CONFIRMATION
+  REQUIRES_ACTION
+  AUTHORIZED
+  CAPTURED
+  CANCELED
+  REFUNDED
+  FAILED
+}
+
+enum ShipmentStage {
+  INDIA_BONDED_HUB
+  INDIA_EXPORT_CUSTOMS
+  INTERNATIONAL_AIR_TRANSIT
+  US_PORT_OF_ENTRY
+  OUT_FOR_DELIVERY
+  DELIVERED
+}
+
+enum RewardStatus {
+  PENDING
+  CONFIRMED
+  REDEEMED
+  EXPIRED
+}
+
+// ------------------------------------------------------------------------------
+// User & Authentication
+// ------------------------------------------------------------------------------
+
+model User {
+  id               String      @id @default(uuid())
+  email            String      @unique
+  passwordHash     String?
+  role             UserRole    @default(PATIENT)
+  firstName        String
+  lastName         String
+  phone            String?     // Application-layer encrypted
+  dateOfBirth      DateTime?   // Application-layer encrypted
+  emailVerified    Boolean     @default(false)
+  twoFactorEnabled Boolean     @default(false)
+
+  // Relations
+  addresses             Address[]
+  orders                Order[]
+  prescriptions         Prescription[]           @relation("PatientPrescriptions")
+  verifiedPrescriptions Prescription[]           @relation("PharmacistVerifications")
+  referralsMade         ReferralReward[]         @relation("Referrer")
+  referralsReceived     ReferralReward[]         @relation("ReferredUser")
+  auditLogs             AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model Address {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        AddressType @default(SHIPPING)
+  line1       String
+  line2       String?
+  city        String
+  state       String
+  postalCode  String
+  country     String      @default("US")
+  isDefault   Boolean     @default(false)
+
+  orders      Order[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------------------
+// Sourcing, Products & Quality Provenance
+// ------------------------------------------------------------------------------
+
+model Manufacturer {
+  id                      String    @id @default(uuid())
+  name                    String    @unique
+  cdscoLicenseNumber      String    @unique
+  usFdaRegistrationNumber String?
+  facilityCity            String
+  facilityState           String
+  whoGmpCertified         Boolean   @default(true)
+  verifiedAt              DateTime  @default(now())
+
+  products                Product[]
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model Product {
+  id                    String             @id @default(uuid())
+  name                  String             // Generic active name (e.g. "Atorvastatin Calcium")
+  brandReferenceName    String             // e.g. "Generic for Lipitor"
+  slug                  String             @unique
+  activeIngredient      String
+  strength              String             // e.g. "20mg"
+  dosageForm            String             // e.g. "Oral Tablet"
+  packageSize           Int                @default(90) // Standard 90-day count
+  ndcEquivalent         String?            // Reference U.S. NDC mapping
+  description           String             @db.Text
+  storageConditions     String             @default("Store at 20°C to 25°C (68°F to 77°F)")
+  
+  // Transparent Pricing Model (USD)
+  fobPriceUsd           Decimal            @db.Decimal(10, 2) // Origin manufacturing cost
+  retailPriceUsd        Decimal            @db.Decimal(10, 2) // IndoPharm price to patient
+  usAverageCashPrice    Decimal            @db.Decimal(10, 2) // Reference domestic cash benchmark
+
+  // Regulatory Constraints
+  isControlledSubstance Boolean            @default(false) // Barred if true
+  requiresPrescription  Boolean            @default(true)
+  isActive              Boolean            @default(true)
+
+  manufacturerId        String
+  manufacturer          Manufacturer       @relation(fields: [manufacturerId], references: [id])
+
+  // Relations
+  batchCertificates     BatchCertificate[]
+  orderItems            OrderItem[]
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([slug])
+  @@index([activeIngredient])
+  @@index([manufacturerId])
+}
+
+model BatchCertificate {
+  id                  String      @id @default(uuid())
+  productId           String
+  product             Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lotNumber           String      @unique
+  manufactureDate     DateTime
+  expirationDate      DateTime
+  purityPercentage    Decimal     @db.Decimal(5, 2) // e.g. 99.85%
+  coaDocumentUrl      String      // Encrypted private S3 URL
+  releasedByQcOfficer String
+  releasedAt          DateTime    @default(now())
+
+  orderItems          OrderItem[]
+
+  createdAt           DateTime    @default(now())
+
+  @@index([productId])
+  @@index([lotNumber])
+}
+
+// ------------------------------------------------------------------------------
+// Clinical Prescriptions (ePHI Protected)
+// ------------------------------------------------------------------------------
+
+model Prescription {
+  id                 String             @id @default(uuid())
+  userId             String
+  user               User               @relation("PatientPrescriptions", fields: [userId], references: [id], onDelete: Cascade)
+
+  prescriberName     String
+  prescriberNpi      String?            // Application-level encrypted
+  prescriberState    String?
+  documentUrl        String             // Encrypted private storage key
+  mimeType           String             @default("application/pdf")
+  fileSizeBytes      Int
+
+  status             PrescriptionStatus @default(PENDING_REVIEW)
+  verificationNotes  String?            @db.Text
+  verifiedByUserId   String?
+  verifiedByUser     User?              @relation("PharmacistVerifications", fields: [verifiedByUserId], references: [id])
+  verifiedAt         DateTime?
+  expiresAt          DateTime?
+
+  refillsAuthorized  Int                @default(3)
+  refillsRemaining   Int                @default(3)
+
+  orders             Order[]
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ------------------------------------------------------------------------------
+// Orders, Checkout & Items
+// ------------------------------------------------------------------------------
+
+model Order {
+  id                 String              @id @default(uuid())
+  orderNumber        String              @unique
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status             OrderStatus         @default(PENDING_PRESCRIPTION)
+
+  // Financial Breakdown (USD)
+  subtotalUsd        Decimal             @db.Decimal(10, 2)
+  shippingUsd        Decimal             @db.Decimal(10, 2)
+  dispensingFeeUsd   Decimal             @db.Decimal(10, 2)
+  totalUsd           Decimal             @db.Decimal(10, 2)
+
+  // Addresses & Prescriptions
+  shippingAddressId  String
+  shippingAddress    Address             @relation(fields: [shippingAddressId], references: [id])
+  prescriptionId     String?
+  prescription       Prescription?       @relation(fields: [prescriptionId], references: [id])
+
+  // Relations
+  items              OrderItem[]
+  paymentTransaction PaymentTransaction?
+  shipment           Shipment?
+
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+}
+
+model OrderItem {
+  id                 String            @id @default(uuid())
+  orderId            String
+  order              Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId          String
+  product            Product           @relation(fields: [productId], references: [id])
+  batchCertificateId String?
+  batchCertificate   BatchCertificate? @relation(fields: [batchCertificateId], references: [id])
+
+  quantity           Int               @default(1)
+  unitPriceUsd       Decimal           @db.Decimal(10, 2)
+  totalPriceUsd      Decimal           @db.Decimal(10, 2)
+
+  createdAt          DateTime          @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// ------------------------------------------------------------------------------
+// Gateway-Agnostic Payment Transaction Ledger
+// ------------------------------------------------------------------------------
+
+model PaymentTransaction {
+  id                    String        @id @default(uuid())
+  orderId               String        @unique
+  order                 Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  providerId            String        // e.g. "mock", "stripe", "checkout-com", "healthcare-acquirer"
+  externalTransactionId String?       @unique
+  status                PaymentStatus @default(DRAFT)
+  amountUsd             Decimal       @db.Decimal(10, 2)
+  currency              String        @default("USD")
+  
+  authorizedAt          DateTime?
+  capturedAt            DateTime?
+  refundedAt            DateTime?
+  failureReason         String?
+
+  metadata              Json?
+
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}
+
+// ------------------------------------------------------------------------------
+// Cross-Border Fulfillment & Milestone Logistics
+// ------------------------------------------------------------------------------
+
+model Shipment {
+  id             String          @id @default(uuid())
+  orderId        String          @unique
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  carrier        String          // "DHL_EXPRESS" | "FEDEX_CROSSBORDER" | "USPS"
+  trackingNumber String          @unique
+  currentStage   ShipmentStage   @default(INDIA_BONDED_HUB)
+  originCountry  String          @default("IN")
+  destinationCountry String      @default("US")
+  
+  estimatedDelivery DateTime?
+  actualDelivery    DateTime?
+
+  events         TrackingEvent[]
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([orderId])
+  @@index([trackingNumber])
+}
+
+model TrackingEvent {
+  id          String        @id @default(uuid())
+  shipmentId  String
+  shipment    Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  stage       ShipmentStage
+  location    String        // e.g., "Mumbai Hub, India" or "JFK Airport, NY"
+  description String
+  eventTime   DateTime      @default(now())
+
+  createdAt   DateTime      @default(now())
+
+  @@index([shipmentId])
+  @@index([eventTime])
+}
+
+// ------------------------------------------------------------------------------
+// Retention, Adherence & Referrals
+// ------------------------------------------------------------------------------
+
+model ReferralReward {
+  id             String       @id @default(uuid())
+  referrerId     String
+  referrer       User         @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId String       @unique
+  referredUser   User         @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  creditUsd      Decimal      @db.Decimal(10, 2) @default(20.00)
+  status         RewardStatus @default(PENDING)
+  redeemedAt     DateTime?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([referrerId])
+  @@index([referredUserId])
+}
+
+// ------------------------------------------------------------------------------
+// Immutable Security & Compliance Audit Trail
+// ------------------------------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userRole     String?
+  action       String   // e.g. "PRESCRIPTION_VIEWED", "ORDER_APPROVED", "EXPORT_MANIFEST_FILED"
+  resourceType String   // e.g. "Prescription", "Order", "User"
+  resourceId   String
+  ipAddress    String?
+  userAgent    String?
+  metadata     Json?
+
+  timestamp    DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType, resourceId])
+  @@index([timestamp])
+}
