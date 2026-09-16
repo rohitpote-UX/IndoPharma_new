@@ -2,14 +2,14 @@ import React from 'react';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
-  variant?: 'olive' | 'neutral' | 'success' | 'warning' | 'outline';
+  variant?: 'green' | 'olive' | 'neutral' | 'success' | 'warning' | 'outline';
   size?: 'sm' | 'md';
   className?: string;
 }
 
 export function Badge({
   children,
-  variant = 'olive',
+  variant = 'green',
   size = 'md',
   className = '',
   ...props
@@ -17,11 +17,12 @@ export function Badge({
   const baseStyles = 'inline-flex items-center font-medium tracking-wide rounded-full border';
 
   const variantStyles = {
-    olive: 'bg-[#EEF1E6] text-[#43522B] border-[#D1D6C5]',
-    neutral: 'bg-[#FAFAF7] text-[#52564C] border-[#E4E7DC]',
-    success: 'bg-[#F0F7EE] text-[#3D7038] border-[#CBE2C6]',
-    warning: 'bg-[#FDF7E7] text-[#94681E] border-[#F2DEB0]',
-    outline: 'bg-transparent text-[#52564C] border-[#E4E7DC]',
+    green: 'bg-[#F3F7F3] text-[#2F5D3A] border-[#E6ECE7]',
+    olive: 'bg-[#F3F7F3] text-[#2F5D3A] border-[#E6ECE7]', // backwards compatible
+    neutral: 'bg-[#FFFFFF] text-[#59605A] border-[#E6ECE7]',
+    success: 'bg-[#F3F7F3] text-[#2F5D3A] border-[#D3DDD5]',
+    warning: 'bg-[#FDF9EE] text-[#8B651B] border-[#F2DEB0]',
+    outline: 'bg-transparent text-[#59605A] border-[#E6ECE7]',
   };
 
   const sizeStyles = {

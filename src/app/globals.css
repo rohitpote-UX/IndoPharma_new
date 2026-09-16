@@ -1,114 +1,136 @@
 @import "tailwindcss";
 
 :root {
-  /* Editorial Palette Tokens */
-  --color-warm-white: #FAFAF7;
+  /* ==================================================
+     PURE WHITE + GREEN DESIGN SYSTEM TOKENS
+     Ratio: 85–90% Pure White, 8–12% Refined Green
+     ================================================== */
   --color-pure-white: #FFFFFF;
-  --color-primary-olive: #596B3A;
-  --color-primary-olive-dark: #43522B;
-  --color-primary-olive-light: #70844B;
-  --color-soft-olive: #EEF1E6;
-  --color-soft-olive-muted: #E2E7D7;
-  --color-charcoal: #171914;
-  --color-charcoal-muted: #52564C;
-  --color-charcoal-subtle: #8A9081;
-  --color-border-subtle: #E4E7DC;
-  --color-border-strong: #D1D6C5;
+  --color-primary-green: #2F5D3A;
+  --color-primary-green-dark: #24482D;
+  --color-primary-green-light: #3F704A;
+  --color-surface-green-subtle: #F3F7F3;
+  --color-surface-green-hover: #E9F1EA;
 
-  /* Semantic Highlights */
-  --color-success: #3D7038;
-  --color-success-bg: #F0F7EE;
-  --color-warning: #94681E;
-  --color-warning-bg: #FDF7E7;
-  --color-danger: #A33A3A;
-  --color-danger-bg: #FDF0F0;
+  /* Typography Colors */
+  --color-text-primary: #111411;
+  --color-text-secondary: #59605A;
+  --color-text-muted: #848D85;
 
-  /* Theme mappings */
-  --background: var(--color-warm-white);
-  --foreground: var(--color-charcoal);
+  /* Architectural Borders */
+  --color-border-subtle: #E6ECE7;
+  --color-border-hover: #D3DDD5;
+
+  /* Semantic Alerts */
+  --color-success: #2F5D3A;
+  --color-success-bg: #F3F7F3;
+  --color-warning: #8B651B;
+  --color-warning-bg: #FDF9EE;
+  --color-danger: #9A2C2C;
+  --color-danger-bg: #FDF2F2;
+
+  /* Global Mappings */
+  --background: var(--color-pure-white);
+  --foreground: var(--color-text-primary);
   --border: var(--color-border-subtle);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-warm-white: var(--color-warm-white);
   --color-pure-white: var(--color-pure-white);
-  --color-olive: var(--color-primary-olive);
-  --color-olive-dark: var(--color-primary-olive-dark);
-  --color-olive-light: var(--color-primary-olive-light);
-  --color-soft-olive: var(--color-soft-olive);
-  --color-soft-olive-muted: var(--color-soft-olive-muted);
-  --color-charcoal: var(--color-charcoal);
-  --color-charcoal-muted: var(--color-charcoal-muted);
-  --color-charcoal-subtle: var(--color-charcoal-subtle);
+  --color-green-primary: var(--color-primary-green);
+  --color-green-dark: var(--color-primary-green-dark);
+  --color-green-light: var(--color-primary-green-light);
+  --color-green-subtle: var(--color-surface-green-subtle);
+  --color-green-hover: var(--color-surface-green-hover);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
   --color-border-subtle: var(--color-border-subtle);
-  --color-border-strong: var(--color-border-strong);
+  --color-border-hover: var(--color-border-hover);
   --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
 }
 
 body {
-  background-color: var(--color-warm-white);
-  color: var(--color-charcoal);
+  background-color: var(--color-pure-white);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
-/* Fluid Typography Helpers */
+/* Fluid Editorial Typography Helpers */
 .text-display {
-  font-size: clamp(2.5rem, 6vw, 5.25rem);
+  font-size: clamp(3rem, 7vw, 6.5rem);
   line-height: 1.05;
   letter-spacing: -0.035em;
   font-weight: 800;
 }
 
 .text-hero-headline {
-  font-size: clamp(2.25rem, 5vw, 4.25rem);
-  line-height: 1.08;
+  font-size: clamp(2.75rem, 6.5vw, 5.75rem);
+  line-height: 1.06;
   letter-spacing: -0.03em;
   font-weight: 800;
 }
 
 .text-section-title {
-  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
-  line-height: 1.15;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.12;
   letter-spacing: -0.025em;
   font-weight: 700;
 }
 
 .text-editorial-lead {
-  font-size: clamp(1.0625rem, 1.4vw, 1.25rem);
-  line-height: 1.55;
-  color: var(--color-charcoal-muted);
+  font-size: clamp(1.125rem, 1.5vw, 1.35rem);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
 }
 
-/* Accessible focus ring */
+/* Micro-Interaction Transitions */
+.card-hover-zoom {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-hover-zoom:hover {
+  transform: scale(1.02);
+}
+
+.group-arrow-shift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.group:hover .group-arrow-shift {
+  transform: translateX(3px);
+}
+
+/* Accessible Focus States */
 *:focus-visible {
-  outline: 2px solid var(--color-primary-olive);
+  outline: 2px solid var(--color-primary-green);
   outline-offset: 2px;
 }
 
-/* Editorial selection tone */
+/* Selection Tone */
 ::selection {
-  background-color: var(--color-soft-olive-muted);
-  color: var(--color-charcoal);
+  background-color: var(--color-surface-green-subtle);
+  color: var(--color-primary-green-dark);
 }
 
-/* Subtle scrollbar */
+/* Minimal Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-warm-white);
+  background: var(--color-pure-white);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
+  background: var(--color-border-subtle);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-charcoal-subtle);
+  background: var(--color-text-muted);
 }

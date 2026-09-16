@@ -1,182 +1,135 @@
 import React from 'react';
 import Link from 'next/link';
-import { Shield, Lock, AlertTriangle, Phone, Mail } from 'lucide-react';
-import { siteConfig } from '@/config/site';
 
 export function Footer() {
   return (
-    <footer className="border-t border-[#E4E7DC] bg-[#171914] text-[#8A9081] text-xs">
-      {/* Primary Legal & Statutory Regulatory Warning Box */}
-      <div className="border-b border-[#52564C]/30 bg-[#0F100D] px-4 py-8 sm:px-8">
-        <div className="mx-auto max-w-[1440px]">
-          <div className="flex items-start gap-4 rounded-2xl border border-[#94681E]/30 bg-[#94681E]/10 p-5 sm:p-7 text-[#FDF7E7]">
-            <AlertTriangle className="h-6 w-6 shrink-0 text-[#F2DEB0] mt-0.5" />
-            <div className="space-y-2 text-xs leading-relaxed">
-              <div className="font-bold text-[#F2DEB0] uppercase tracking-wider text-[11px]">
-                Statutory Regulatory & Clinical Disclosure
-              </div>
-              <p>{siteConfig.disclaimers.regulatoryNotice}</p>
-              <p>{siteConfig.disclaimers.controlledSubstancesBan}</p>
-              <p>{siteConfig.disclaimers.medicalAdvice}</p>
-              <p className="text-[11px] text-[#FDF7E7]/80 pt-1">
-                {siteConfig.disclaimers.deliveryTimeline}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Structured 5-Column Navigation */}
-      <div className="mx-auto max-w-[1440px] px-4 py-14 sm:px-8">
+    <footer className="bg-white border-t border-[#E6ECE7] text-[#59605A] text-xs py-14 sm:py-18">
+      <div className="mx-auto max-w-[1440px] px-6 sm:px-8 lg:px-12 space-y-12">
+        {/* Compact 4-Column Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
-          {/* Col 1: Brand & Slogan */}
-          <div className="space-y-4 lg:col-span-1">
-            <div className="flex items-center gap-2.5 text-white">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#596B3A] text-white">
-                <Shield className="h-4 w-4" />
+          {/* Col 1: Brand Statement */}
+          <div className="space-y-3 lg:col-span-2 lg:pr-10">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <div className="h-6 w-6 rounded-md bg-[#2F5D3A] text-white flex items-center justify-center text-xs font-bold font-serif">
+                I
               </div>
-              <span className="text-lg font-bold tracking-tight">
-                Indo<span className="text-[#596B3A]">Pharm</span>
+              <span className="text-base font-bold tracking-tight text-[#111411]">
+                Indo<span className="text-[#2F5D3A]">Pharm</span>
               </span>
-            </div>
-            <p className="text-xs text-[#8A9081] leading-relaxed">
-              Direct pharmaceutical commerce bridge from verified Indian manufacturing plants to U.S. maintenance patients.
+            </Link>
+            <p className="text-xs text-[#59605A] leading-relaxed max-w-sm">
+              Direct India → USA pharmaceutical commerce platform for chronic maintenance care.
+              Transparent landed costs, WHO-GMP factory provenance, and verified batch testing.
             </p>
-            <div className="flex items-center gap-2 text-[11px] text-[#EEF1E6]">
-              <Lock className="h-3.5 w-3.5 text-[#596B3A]" />
-              <span>TLS 1.3 256-bit Encrypted Platform</span>
+            <div className="text-[11px] text-[#848D85] pt-1">
+              Personal Importation compliance under FDA CPG 110.300.
             </div>
           </div>
 
-          {/* Col 2: Medicines */}
-          <div>
-            <div className="font-bold uppercase tracking-wider text-white text-[11px] mb-4">
-              Medicines
+          {/* Col 2: SHOP */}
+          <div className="space-y-3">
+            <div className="font-semibold uppercase tracking-wider text-[#111411] text-[11px]">
+              Shop
             </div>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2 text-xs">
               <li>
-                <Link href="#catalog" className="hover:text-white transition-colors">
-                  Cardiovascular Therapies
+                <Link href="/medicines" className="hover:text-[#2F5D3A] transition-colors">
+                  Medicines Catalogue
                 </Link>
               </li>
               <li>
-                <Link href="#catalog" className="hover:text-white transition-colors">
-                  Metabolic & Diabetes Care
+                <Link href="/search" className="hover:text-[#2F5D3A] transition-colors">
+                  Search & Discovery
                 </Link>
               </li>
               <li>
-                <Link href="#catalog" className="hover:text-white transition-colors">
-                  Endocrine & Thyroid
+                <Link href="/cart" className="hover:text-[#2F5D3A] transition-colors">
+                  Shopping Cart
                 </Link>
               </li>
               <li>
-                <Link href="#catalog" className="hover:text-white transition-colors">
-                  Gastrointestinal Health
-                </Link>
-              </li>
-              <li>
-                <Link href="#catalog" className="hover:text-white transition-colors">
-                  90-Day Standard Refills
+                <Link href="/account" className="hover:text-[#2F5D3A] transition-colors">
+                  Account Portal
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Trust & Provenance */}
-          <div>
-            <div className="font-bold uppercase tracking-wider text-white text-[11px] mb-4">
-              Trust & Quality
+          {/* Col 3: COMPANY */}
+          <div className="space-y-3">
+            <div className="font-semibold uppercase tracking-wider text-[#111411] text-[11px]">
+              Company
             </div>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2 text-xs">
               <li>
-                <Link href="#trust" className="hover:text-white transition-colors">
-                  Verified Manufacturing Plants
+                <Link href="/how-it-works" className="hover:text-[#2F5D3A] transition-colors">
+                  How It Works
                 </Link>
               </li>
               <li>
-                <Link href="#trust" className="hover:text-white transition-colors">
-                  Certificate of Analysis (CoA)
+                <Link href="/trust" className="hover:text-[#2F5D3A] transition-colors">
+                  Trust & Sourcing
                 </Link>
               </li>
               <li>
-                <Link href="#pricing" className="hover:text-white transition-colors">
-                  Transparent Landed-Cost Model
+                <Link href="/trust" className="hover:text-[#2F5D3A] transition-colors">
+                  Batch Quality Assays
                 </Link>
               </li>
               <li>
-                <Link href="#how-it-works" className="hover:text-white transition-colors">
-                  8-Stage Chain of Custody
+                <Link href="/trust" className="hover:text-[#2F5D3A] transition-colors">
+                  Supply Chain Custody
                 </Link>
-              </li>
-              <li>
-                <span className="text-[#52564C]">Zero Controlled Substances</span>
               </li>
             </ul>
           </div>
 
-          {/* Col 4: Support */}
-          <div>
-            <div className="font-bold uppercase tracking-wider text-white text-[11px] mb-4">
-              Support
+          {/* Col 4: SUPPORT & LEGAL */}
+          <div className="space-y-3">
+            <div className="font-semibold uppercase tracking-wider text-[#111411] text-[11px]">
+              Support & Legal
             </div>
-            <ul className="space-y-2.5">
-              <li className="flex items-center gap-2">
-                <Phone className="h-3.5 w-3.5 text-[#596B3A]" />
-                <span className="text-white font-mono">{siteConfig.support.pharmacistHotline}</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Mail className="h-3.5 w-3.5 text-[#596B3A]" />
-                <span>{siteConfig.support.email}</span>
-              </li>
-              <li className="text-[11px] text-[#52564C]">
-                {siteConfig.support.hours}
+            <ul className="space-y-2 text-xs">
+              <li>
+                <Link href="/help" className="hover:text-[#2F5D3A] transition-colors">
+                  Help Center
+                </Link>
               </li>
               <li>
-                <Link href="#faq" className="hover:text-white transition-colors">
+                <Link href="/help/faq" className="hover:text-[#2F5D3A] transition-colors">
                   Frequently Asked Questions
                 </Link>
               </li>
-            </ul>
-          </div>
-
-          {/* Col 5: Legal & Regulatory */}
-          <div>
-            <div className="font-bold uppercase tracking-wider text-white text-[11px] mb-4">
-              Legal & Compliance
-            </div>
-            <ul className="space-y-2.5">
               <li>
-                <Link href="#regulatory-notice" className="hover:text-white transition-colors">
-                  Personal Importation Policy
+                <Link href="/help/shipping" className="hover:text-[#2F5D3A] transition-colors">
+                  Shipping & Customs
                 </Link>
               </li>
               <li>
-                <Link href="#support" className="hover:text-white transition-colors">
-                  Prescription Requirements
+                <Link href="/help/payments" className="hover:text-[#2F5D3A] transition-colors">
+                  Payment Security
                 </Link>
               </li>
               <li>
-                <span className="text-[#52564C]">Privacy & HIPAA Safeguards</span>
-              </li>
-              <li>
-                <span className="text-[#52564C]">Terms of Service</span>
-              </li>
-              <li>
-                <span className="text-[#52564C]">Refund & Customs Guarantee</span>
+                <Link href="/help/returns" className="hover:text-[#2F5D3A] transition-colors">
+                  Refund & Return Policy
+                </Link>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom Attribution & Statutory Disclaimers */}
-        <div className="mt-14 border-t border-[#52564C]/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-[#52564C]">
+        {/* Regulatory Statement & Copyright */}
+        <div className="pt-8 border-t border-[#E6ECE7] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-[11px] text-[#848D85]">
           <div>
-            © {new Date().getFullYear()} IndoPharm Platform. Built for verifiable pharmaceutical commerce.
+            © {new Date().getFullYear()} IndoPharm Platform. All rights reserved.
           </div>
-          <div className="flex items-center gap-6">
-            <span>U.S. FDA Personal Importation (CPG 110.300)</span>
-            <span>CDSCO Registered Origin</span>
-            <span>90-Day Supply Limit Enforced</span>
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <span>Valid U.S. Prescription Strictly Required</span>
+            <span>•</span>
+            <span>No Controlled Substances</span>
+            <span>•</span>
+            <span>WHO-GMP Origin Plants</span>
           </div>
         </div>
       </div>

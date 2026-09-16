@@ -2,32 +2,26 @@
 
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, Sparkles, Building2, FileCheck, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Check, Sparkles } from 'lucide-react';
 import { Container } from '@/components/ui/Container';
-import { Button } from '@/components/ui/Button';
 import gsap from 'gsap';
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const eyebrowRef = useRef<HTMLDivElement>(null);
-  const headlineRef = useRef<HTMLHeadingElement>(null);
-  const leadRef = useRef<HTMLParagraphElement>(null);
-  const ctaRef = useRef<HTMLDivElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const visualRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Respect user reduced-motion preference
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power2.out', duration: 0.8 } });
 
-      tl.from(eyebrowRef.current, { opacity: 0, y: 16, delay: 0.1 })
-        .from(headlineRef.current, { opacity: 0, y: 24 }, '-=0.6')
-        .from(leadRef.current, { opacity: 0, y: 20 }, '-=0.6')
-        .from(ctaRef.current, { opacity: 0, y: 16 }, '-=0.5')
-        .from(cardRef.current, { opacity: 0, y: 30, scale: 0.98 }, '-=0.6');
+      tl.from('.hero-anim-eyebrow', { opacity: 0, y: 14, delay: 0.1 })
+        .from('.hero-anim-h1', { opacity: 0, y: 22 }, '-=0.6')
+        .from('.hero-anim-desc', { opacity: 0, y: 16 }, '-=0.6')
+        .from('.hero-anim-cta', { opacity: 0, y: 16 }, '-=0.5')
+        .from(visualRef.current, { opacity: 0, y: 28, scale: 0.98 }, '-=0.6');
     }, containerRef);
 
     return () => ctx.revert();
@@ -36,145 +30,152 @@ export function Hero() {
   return (
     <section
       ref={containerRef}
-      className="relative min-h-[75vh] lg:min-h-[85vh] flex items-center pt-8 pb-16 sm:pb-24 border-b border-[#E4E7DC] overflow-hidden"
+      className="relative min-h-[80vh] lg:min-h-[88vh] flex items-center bg-white border-b border-[#E6ECE7] overflow-hidden pt-8 pb-16 lg:py-0"
     >
-      <Container>
+      <Container className="w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* LEFT: 7 Columns Editorial Story */}
-          <div className="lg:col-span-7 space-y-6 sm:space-y-8">
-            {/* Eyebrow */}
-            <div ref={eyebrowRef} className="inline-flex items-center gap-2 rounded-full border border-[#D1D6C5] bg-[#EEF1E6] px-3.5 py-1.5 text-xs font-semibold text-[#43522B]">
-              <Sparkles className="h-3.5 w-3.5 text-[#596B3A]" />
-              <span>Direct India → USA Pharmaceutical Commerce</span>
+          {/* LEFT: 6 Columns (Editorial Typography & Action) */}
+          <div className="lg:col-span-6 space-y-6 sm:space-y-8">
+            {/* Small Eyebrow */}
+            <div className="hero-anim-eyebrow inline-flex items-center gap-2 rounded-full border border-[#E6ECE7] bg-[#F3F7F3] px-3.5 py-1.5 text-xs font-semibold text-[#2F5D3A]">
+              <Sparkles className="h-3.5 w-3.5 text-[#2F5D3A]" />
+              <span>PHARMACEUTICAL COMMERCE, MADE CLEAR.</span>
             </div>
 
-            {/* Main Headline */}
-            <h1
-              ref={headlineRef}
-              className="text-hero-headline text-[#171914] tracking-tight"
-            >
-              Better pharmaceutical value.{' '}
-              <span className="text-[#596B3A] block sm:inline">Clearer at every step.</span>
+            {/* H1 Display Headline */}
+            <h1 className="hero-anim-h1 text-[clamp(2.75rem,5.5vw,5.5rem)] font-bold tracking-tight text-[#111411] leading-[1.06]">
+              Better value.
+              <br />
+              <span className="text-[#2F5D3A]">Clearer at every step.</span>
             </h1>
 
-            {/* Supporting Copy */}
-            <p
-              ref={leadRef}
-              className="text-editorial-lead max-w-2xl text-base sm:text-lg text-[#52564C] leading-relaxed"
-            >
-              Discover products through a transparent supply chain, with clear information,
-              secure ordering and reliable delivery. Sourced directly from audited WHO-GMP
-              manufacturing facilities for chronic maintenance therapy.
+            {/* Short Supporting Statement */}
+            <p className="hero-anim-desc text-base sm:text-lg lg:text-xl text-[#59605A] max-w-xl font-normal leading-relaxed">
+              Explore pharmaceutical products with transparent information,
+              competitive value and a simpler ordering experience.
             </p>
 
-            {/* CTA Group */}
-            <div ref={ctaRef} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-              <Link href="#catalog" className="w-full sm:w-auto">
-                <Button size="lg" className="w-full sm:w-auto">
-                  <span>Explore Medicines</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+            {/* Primary & Secondary Action */}
+            <div className="hero-anim-cta flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+              {/* Dominant Primary CTA */}
+              <Link
+                href="/medicines"
+                className="group inline-flex h-[52px] sm:h-[54px] items-center justify-center gap-2.5 rounded-xl bg-[#2F5D3A] px-7 sm:px-8 text-sm sm:text-base font-semibold text-white transition-all duration-200 hover:bg-[#24482D] hover:shadow-md cursor-pointer active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-[#2F5D3A]"
+              >
+                <span>Explore Medicines</span>
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
 
-              <Link href="#how-it-works" className="w-full sm:w-auto">
-                <Button variant="secondary" size="lg" className="w-full sm:w-auto">
-                  <span>How It Works</span>
-                </Button>
+              {/* Secondary CTA */}
+              <Link
+                href="/how-it-works"
+                className="inline-flex h-[52px] sm:h-[54px] items-center justify-center rounded-xl border border-[#E6ECE7] bg-white px-6 text-sm sm:text-base font-medium text-[#111411] hover:border-[#D3DDD5] hover:bg-[#F3F7F3] transition-colors"
+              >
+                <span>How It Works</span>
               </Link>
             </div>
 
-            {/* Stat Line */}
-            <div className="pt-6 border-t border-[#E4E7DC] grid grid-cols-3 gap-6 text-xs text-[#52564C]">
-              <div>
-                <div className="font-bold text-base sm:text-xl text-[#171914]">65–85%</div>
-                <div className="text-[#8A9081] mt-0.5">Average Savings</div>
+            {/* Minimal Reassurance Micro-Points */}
+            <div className="pt-4 border-t border-[#E6ECE7] flex flex-wrap items-center gap-6 text-xs text-[#59605A]">
+              <div className="flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-[#2F5D3A]" />
+                <span>Audited WHO-GMP Facilities</span>
               </div>
-              <div>
-                <div className="font-bold text-base sm:text-xl text-[#171914]">10–14 d</div>
-                <div className="text-[#8A9081] mt-0.5">Bonded Air Transit</div>
+              <div className="flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-[#2F5D3A]" />
+                <span>Serialized Batch Testing</span>
               </div>
-              <div>
-                <div className="font-bold text-base sm:text-xl text-[#171914]">100%</div>
-                <div className="text-[#8A9081] mt-0.5">Batch Traceability</div>
+              <div className="flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-[#2F5D3A]" />
+                <span>Valid U.S. Prescription Required</span>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: 5 Columns Premium Supply-Chain Composition */}
-          <div ref={cardRef} className="lg:col-span-5">
-            <div className="relative rounded-2xl border border-[#E4E7DC] bg-white p-6 sm:p-8 shadow-sm space-y-6">
-              {/* Badge & Header */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-[#EEF1E6] px-2.5 py-1 text-xs font-semibold text-[#43522B] border border-[#D1D6C5]">
-                    <ShieldCheck className="h-3.5 w-3.5 text-[#596B3A]" />
-                    <span>Verified Sourcing Node</span>
-                  </span>
-                  <h2 className="text-base font-bold text-[#171914] mt-2">
-                    Halol Manufacturing Facility
-                  </h2>
-                  <p className="text-xs text-[#52564C]">Sun Pharma Industries Ltd • Gujarat, India</p>
-                </div>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FAFAF7] border border-[#E4E7DC] text-[#596B3A]">
-                  <Building2 className="h-5 w-5" />
-                </div>
-              </div>
+          {/* RIGHT: 6 Columns (Architectural Visual Composition) */}
+          <div ref={visualRef} className="lg:col-span-6 relative">
+            <div className="relative mx-auto max-w-xl lg:max-w-none rounded-3xl border border-[#E6ECE7] bg-[#F3F7F3] p-6 sm:p-10 lg:p-12 overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
+              {/* Subtle Architectural Lattice Pattern */}
+              <div
+                className="absolute inset-0 opacity-40 pointer-events-none"
+                style={{
+                  backgroundImage: `radial-gradient(#2F5D3A 0.75px, transparent 0.75px)`,
+                  backgroundSize: '24px 24px',
+                }}
+              />
 
-              {/* Physical Batch Certificate Data Card */}
-              <div className="rounded-xl bg-[#FAFAF7] border border-[#E4E7DC] p-4 space-y-3 text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#E4E7DC]">
-                  <span className="text-[#52564C]">Active Generic Formulation</span>
-                  <span className="font-bold text-[#171914]">Atorvastatin Calcium 20mg</span>
+              <div className="relative space-y-6">
+                {/* Header Tag */}
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-1.5 rounded-md bg-white border border-[#E6ECE7] px-2.5 py-1 text-[11px] font-semibold text-[#2F5D3A]">
+                    <ShieldCheck className="h-3.5 w-3.5 text-[#2F5D3A]" />
+                    <span>VERIFIED PHARMACEUTICAL BATCH</span>
+                  </div>
+                  <span className="font-mono text-[11px] text-[#848D85]">LOT-2026-AT20-941</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-[11px]">
+                {/* Architectural Product Package Card */}
+                <div className="relative rounded-2xl bg-white border border-[#E6ECE7] p-6 sm:p-8 shadow-sm space-y-6">
+                  <div className="flex items-center justify-between border-b border-[#E6ECE7] pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-[#2F5D3A]" />
+                      <span className="text-xs font-bold uppercase tracking-widest text-[#2F5D3A]">
+                        IndoPharm Specimen
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-medium text-[#59605A]">USP Grade</span>
+                  </div>
+
                   <div>
-                    <span className="text-[#8A9081] block">Batch Lot Serial</span>
-                    <span className="font-mono font-bold text-[#171914]">LOT-2026-AT20-941</span>
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-[#848D85]">
+                      Active Generic Formulation
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111411] mt-0.5">
+                      Atorvastatin Calcium
+                    </h2>
+                    <p className="text-sm font-medium text-[#59605A] mt-1">
+                      20 mg • Film-Coated Maintenance Tablets
+                    </p>
                   </div>
-                  <div>
-                    <span className="text-[#8A9081] block">HPLC Assay Purity</span>
-                    <span className="font-bold text-[#3D7038]">99.85% Purity</span>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2 border-t border-[#E6ECE7] text-xs">
+                    <div>
+                      <span className="text-[11px] text-[#848D85] block">HPLC Purity</span>
+                      <span className="font-bold text-[#2F5D3A]">99.85% Assay</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-[#848D85] block">Facility Origin</span>
+                      <span className="font-medium text-[#111411]">Halol, Gujarat</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-[#848D85] block">Standard Supply</span>
+                      <span className="font-medium text-[#111411]">90 Tabs (90 Days)</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[#8A9081] block">CDSCO Export License</span>
-                    <span className="font-mono text-[#52564C]">CDSCO-MH-2018</span>
-                  </div>
-                  <div>
-                    <span className="text-[#8A9081] block">Standard Packaging</span>
-                    <span className="font-semibold text-[#171914]">90 Tablets (3 Months)</span>
+
+                  <div className="rounded-xl bg-[#F3F7F3] border border-[#E6ECE7] p-4 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#2F5D3A] block">
+                        Direct Landed Price
+                      </span>
+                      <div className="text-2xl font-bold font-mono text-[#111411] mt-0.5">
+                        $29.50
+                        <span className="text-xs font-normal text-[#59605A] ml-1">/ 90 tabs</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-[#848D85] line-through block">U.S. Cash: $124.00</span>
+                      <span className="text-xs font-bold text-[#2F5D3A]">Save $94.50 (76%)</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-[#E4E7DC] flex items-center justify-between text-[11px] text-[#52564C]">
-                  <span className="flex items-center gap-1">
-                    <FileCheck className="h-3.5 w-3.5 text-[#596B3A]" />
-                    <span>Lab Certificate on File</span>
-                  </span>
-                  <span className="font-medium text-[#596B3A]">Verified Lot</span>
+                <div className="flex items-center justify-between text-[11px] text-[#59605A] px-1">
+                  <span>Audited WHO-GMP facility export</span>
+                  <Link href="/trust" className="font-medium text-[#2F5D3A] hover:underline">
+                    View Trust & Quality →
+                  </Link>
                 </div>
-              </div>
-
-              {/* Price Transparency Highlight */}
-              <div className="rounded-xl bg-[#EEF1E6] border border-[#D1D6C5] p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider font-bold text-[#43522B]">
-                    Transparent Landed Cost
-                  </div>
-                  <div className="text-2xl font-black font-mono text-[#171914] mt-0.5">
-                    $29.50 <span className="text-xs font-normal text-[#52564C]">/ 90 tabs</span>
-                  </div>
-                </div>
-                <div className="text-right text-xs">
-                  <div className="text-[#8A9081] line-through">U.S. Cash: $124.00</div>
-                  <div className="font-bold text-[#3D7038] mt-0.5">Save 76% ($94.50)</div>
-                </div>
-              </div>
-
-              {/* Statutory Note */}
-              <div className="flex items-center gap-2 text-[11px] text-[#8A9081]">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#596B3A] shrink-0" />
-                <span>Information provided for reference. Valid U.S. prescription strictly required.</span>
               </div>
             </div>
           </div>

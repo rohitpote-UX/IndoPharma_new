@@ -1,237 +1,187 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Pill, Building2, ShoppingBag, Info } from 'lucide-react';
+import React from 'react';
+import Link from 'next/link';
+import { Pill, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Container } from '@/components/ui/Container';
 import { Badge } from '@/components/ui/Badge';
-import { MOCK_CATALOG, CatalogProduct } from '@/lib/mock/catalog';
+import { MOCK_CATALOG } from '@/lib/mock/catalog';
 import { formatCurrency } from '@/utils/formatters';
 
 export function FeaturedMedicines() {
-  const [activeCategory, setActiveCategory] = useState<string>('All');
-  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
-
-  const categories = ['All', 'Cardiovascular', 'Metabolic', 'Endocrine', 'Gastrointestinal'];
-
-  const filteredProducts =
-    activeCategory === 'All'
-      ? MOCK_CATALOG
-      : MOCK_CATALOG.filter((p) => p.category === activeCategory);
+  const primaryProduct = MOCK_CATALOG[0]; // Atorvastatin Calcium 20mg
+  const supportingProducts = [
+    MOCK_CATALOG[1], // Metformin HCl ER 500mg
+    MOCK_CATALOG[2], // Levothyroxine Sodium 50mcg
+    MOCK_CATALOG[4], // Pantoprazole Sodium 40mg
+  ];
 
   return (
-    <section id="catalog" className="py-20 sm:py-32 border-b border-[#E4E7DC]">
+    <section className="bg-white py-20 sm:py-28 lg:py-36 border-b border-[#E6ECE7]">
       <Container>
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-[#E4E7DC]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-12 sm:pb-16 border-b border-[#E6ECE7]">
           <div className="space-y-3 max-w-2xl">
-            <div className="text-xs font-bold uppercase tracking-widest text-[#596B3A]">
-              04 • Verified Catalog
-            </div>
-            <h2 className="text-section-title text-[#171914]">
-              Chronic Generic Maintenance Therapies
+            <span className="text-xs font-bold uppercase tracking-widest text-[#2F5D3A] block">
+              Curated Therapies
+            </span>
+            <h2 className="text-[clamp(2rem,3.5vw,3rem)] font-bold tracking-tight text-[#111411] leading-tight">
+              Featured maintenance medicines.
             </h2>
-            <p className="text-editorial-lead text-[#52564C]">
-              Essential daily generic medications sourced from audited manufacturing facilities.
-              All orders require a valid, unexpired U.S. physician prescription.
+            <p className="text-base sm:text-lg text-[#59605A] leading-relaxed">
+              Standard 90-day supplies directly from verified manufacturing facilities.
             </p>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                  activeCategory === cat
-                    ? 'bg-[#596B3A] text-white shadow-2xs'
-                    : 'bg-white text-[#52564C] border border-[#E4E7DC] hover:bg-[#EEF1E6]'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="text-xs text-[#848D85]">
+            Requires valid U.S. physician prescription
           </div>
         </div>
 
-        {/* Product Cards Grid */}
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="flex flex-col justify-between rounded-2xl border border-[#E4E7DC] bg-white p-6 sm:p-7 shadow-2xs hover:border-[#D1D6C5] transition-all"
-            >
-              <div className="space-y-5">
-                {/* Visual Packaging Placeholder Area (1:1 Aspect Ratio) */}
-                <div className="relative aspect-square w-full rounded-xl bg-[#FAFAF7] border border-[#E4E7DC] flex flex-col items-center justify-center p-6 text-center group">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white border border-[#E4E7DC] text-[#596B3A] shadow-2xs">
-                    <Pill className="h-8 w-8" />
+        {/* Editorial Product Presentation: 1 Large + 3 Stacked/Supporting Cards */}
+        <div className="mt-12 lg:mt-16 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
+          {/* LEFT: 1 Large Featured Product (6-7 Columns) */}
+          <div className="lg:col-span-6 flex flex-col justify-between rounded-2xl border border-[#E6ECE7] bg-white p-7 sm:p-10 transition-all duration-300 hover:border-[#2F5D3A]/40 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+            <div className="space-y-8">
+              {/* Product Visual Presentation Area */}
+              <Link
+                href={`/medicines/${primaryProduct.slug}`}
+                className="group relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl bg-[#F3F7F3] border border-[#E6ECE7] flex flex-col items-center justify-center p-8 overflow-hidden block"
+              >
+                <div className="relative z-10 flex flex-col items-center text-center space-y-3 transition-transform duration-500 ease-out group-hover:scale-[1.03]">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-[#E6ECE7] text-[#2F5D3A] shadow-xs">
+                    <Pill className="h-10 w-10" />
                   </div>
-                  <div className="mt-4 font-mono text-xs font-bold text-[#171914]">
-                    {product.strength} • {product.packageSize} Tablets
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#2F5D3A] font-semibold">
+                      {primaryProduct.batch.lotNumber}
+                    </span>
+                    <div className="text-sm font-semibold text-[#111411]">
+                      {primaryProduct.manufacturer.name}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-[#8A9081] mt-0.5">
-                    Standard 90-Day Maintenance Supply
+                </div>
+                <div className="absolute top-4 right-4 z-10">
+                  <Badge variant="green" size="sm">
+                    {primaryProduct.strength}
+                  </Badge>
+                </div>
+              </Link>
+
+              {/* Information Hierarchy */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs text-[#59605A]">
+                  <span className="text-[#2F5D3A] font-semibold">In Stock</span>
+                  <span>•</span>
+                  <span>{primaryProduct.category}</span>
+                  <span>•</span>
+                  <span>{primaryProduct.brandReferenceName}</span>
+                </div>
+                <Link href={`/medicines/${primaryProduct.slug}`}>
+                  <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111411] hover:text-[#2F5D3A] transition-colors">
+                    {primaryProduct.name}
+                  </h3>
+                </Link>
+                <p className="text-sm sm:text-base text-[#59605A] leading-relaxed max-w-xl">
+                  {primaryProduct.dosageForm} • 90 Tablets (3-Month Maintenance Supply)
+                </p>
+              </div>
+            </div>
+
+            {/* Price & Action Row */}
+            <div className="pt-8 mt-8 border-t border-[#E6ECE7] flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div>
+                <span className="text-[11px] uppercase tracking-wider text-[#848D85] block">
+                  Transparent Landed Price
+                </span>
+                <div className="flex items-baseline gap-3 mt-0.5">
+                  <span className="text-3xl font-bold font-mono text-[#111411]">
+                    {formatCurrency(primaryProduct.retailPriceUsd)}
+                  </span>
+                  <span className="text-sm text-[#848D85] line-through">
+                    U.S. Cash: {formatCurrency(primaryProduct.usAverageCashPrice)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/medicines/${primaryProduct.slug}`}
+                  className="group h-12 px-6 rounded-xl bg-[#2F5D3A] text-xs font-semibold text-white hover:bg-[#24482D] transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>View Details</span>
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: 3 Supporting Products Stack (6 Columns) */}
+          <div className="lg:col-span-6 flex flex-col gap-5">
+            {supportingProducts.map((product) => (
+              <div
+                key={product.id}
+                className="flex-1 flex flex-col justify-between rounded-2xl border border-[#E6ECE7] bg-white p-5 sm:p-6 transition-all duration-300 hover:border-[#2F5D3A]/40 shadow-[0_2px_12px_rgba(0,0,0,0.02)]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-[#59605A]">
+                      <span className="text-[#2F5D3A] font-medium">Available</span>
+                      <span>•</span>
+                      <span>{product.brandReferenceName}</span>
+                    </div>
+                    <Link href={`/medicines/${product.slug}`}>
+                      <h3 className="text-lg font-bold tracking-tight text-[#111411] hover:text-[#2F5D3A] transition-colors">
+                        {product.name}
+                      </h3>
+                    </Link>
+                    <p className="text-xs text-[#59605A]">
+                      {product.dosageForm} • 90 Tablets (3-Month Supply)
+                    </p>
                   </div>
-                  <div className="absolute top-3 right-3">
-                    <Badge variant={product.regulatoryStatus === 'AVAILABLE' ? 'success' : 'warning'} size="sm">
-                      {product.regulatoryStatus === 'AVAILABLE' ? 'Verified Admissible' : 'Review Required'}
+                  <div className="shrink-0">
+                    <Badge variant="green" size="sm">
+                      {product.strength}
                     </Badge>
                   </div>
                 </div>
 
-                {/* Product Title & Brand Equivalence */}
-                <div>
-                  <h3 className="text-lg font-bold text-[#171914] leading-snug">
-                    {product.name}
-                  </h3>
-                  <div className="text-xs font-medium text-[#52564C] mt-0.5">
-                    {product.brandReferenceName}
-                  </div>
-                </div>
-
-                {/* Technical Metadata */}
-                <div className="rounded-xl bg-[#FAFAF7] border border-[#E4E7DC] p-3.5 space-y-1.5 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-[#8A9081]">Manufacturer:</span>
-                    <span className="font-semibold text-[#171914] flex items-center gap-1">
-                      <Building2 className="h-3 w-3 text-[#596B3A]" />
-                      {product.manufacturer.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#8A9081]">Batch Serial:</span>
-                    <span className="font-mono text-[#52564C]">{product.batch.lotNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#8A9081]">Assayed Purity:</span>
-                    <span className="font-bold text-[#3D7038]">{product.batch.assayPurity}%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pricing & CTA */}
-              <div className="mt-6 pt-5 border-t border-[#E4E7DC] space-y-4">
-                <div className="flex items-baseline justify-between">
+                <div className="pt-4 mt-4 border-t border-[#E6ECE7] flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] text-[#8A9081] uppercase tracking-wider block">
-                      Direct Landed Cost (90 Days)
-                    </span>
-                    <span className="text-2xl font-black font-mono text-[#171914]">
+                    <span className="text-xl font-bold font-mono text-[#111411]">
                       {formatCurrency(product.retailPriceUsd)}
                     </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-[#8A9081] line-through block">
-                      U.S. Cash: {formatCurrency(product.usAverageCashPrice)}
-                    </span>
-                    <span className="text-xs font-bold text-[#3D7038]">
-                      Save {formatCurrency(product.usAverageCashPrice - product.retailPriceUsd)}
+                    <span className="text-xs text-[#848D85] line-through ml-2">
+                      {formatCurrency(product.usAverageCashPrice)}
                     </span>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProduct(product)}
-                    className="min-h-[44px] flex items-center justify-center gap-1 rounded-xl border border-[#E4E7DC] bg-[#FAFAF7] text-xs font-semibold text-[#52564C] hover:bg-[#EEF1E6] transition-colors cursor-pointer"
+                  <Link
+                    href={`/medicines/${product.slug}`}
+                    className="h-9 px-4 rounded-xl border border-[#E6ECE7] bg-white text-xs font-semibold text-[#111411] hover:bg-[#F3F7F3] hover:border-[#2F5D3A]/40 transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Info className="h-3.5 w-3.5" />
-                    <span>View Provenance</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="min-h-[44px] flex items-center justify-center gap-1.5 rounded-xl bg-[#596B3A] text-xs font-bold text-white hover:bg-[#43522B] transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <ShoppingBag className="h-3.5 w-3.5" />
-                    <span>Add to Cart</span>
-                  </button>
+                    <span>View</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        {/* Provenance Detail Modal (Progressive Disclosure) */}
-        {selectedProduct && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#171914]/60 p-4 backdrop-blur-xs animate-in fade-in"
+        {/* Bottom CTA to /medicines */}
+        <div className="mt-14 pt-8 border-t border-[#E6ECE7] flex items-center justify-between">
+          <p className="text-xs sm:text-sm text-[#59605A]">
+            Showing 4 curated chronic maintenance generic therapies.
+          </p>
+          <Link
+            href="/medicines"
+            className="group inline-flex items-center gap-2 text-sm font-semibold text-[#2F5D3A] hover:text-[#24482D] transition-colors"
           >
-            <div className="w-full max-w-lg rounded-2xl border border-[#E4E7DC] bg-white p-6 sm:p-8 space-y-5 shadow-xl">
-              <div className="flex items-start justify-between">
-                <div>
-                  <Badge variant="olive" size="sm">
-                    {selectedProduct.category}
-                  </Badge>
-                  <h3 className="text-lg font-bold text-[#171914] mt-2">
-                    {selectedProduct.name}
-                  </h3>
-                  <div className="text-xs text-[#52564C]">{selectedProduct.brandReferenceName}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedProduct(null)}
-                  className="rounded-lg p-1.5 text-[#8A9081] hover:bg-[#FAFAF7] hover:text-[#171914]"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="rounded-xl bg-[#FAFAF7] border border-[#E4E7DC] p-4 space-y-2.5 text-xs text-[#52564C]">
-                <div className="flex justify-between">
-                  <span className="font-medium">Active Compound:</span>
-                  <span className="text-[#171914] font-semibold">{selectedProduct.activeIngredient}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Origin Facility:</span>
-                  <span className="text-[#171914]">
-                    {selectedProduct.manufacturer.facilityCity}, {selectedProduct.manufacturer.facilityState}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">CDSCO Export License:</span>
-                  <span className="font-mono text-[#171914]">{selectedProduct.manufacturer.cdscoLicense}</span>
-                </div>
-                {selectedProduct.manufacturer.usFdaFeiNumber && (
-                  <div className="flex justify-between">
-                    <span className="font-medium">US-FDA FEI Registry:</span>
-                    <span className="font-mono text-[#171914]">{selectedProduct.manufacturer.usFdaFeiNumber}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="font-medium">Batch Lot Number:</span>
-                  <span className="font-mono font-bold text-[#171914]">{selectedProduct.batch.lotNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Lab Assayed Purity:</span>
-                  <span className="font-bold text-[#3D7038]">{selectedProduct.batch.assayPurity}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">QC Signoff:</span>
-                  <span className="text-[#171914]">{selectedProduct.batch.qcOfficer}</span>
-                </div>
-              </div>
-
-              <p className="text-[11px] leading-relaxed text-[#8A9081]">
-                Information provided for reference. Dispensing requires a valid U.S. physician prescription
-                and clinical pharmacist verification under FDA Personal Importation guidelines.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => setSelectedProduct(null)}
-                className="w-full h-11 rounded-xl bg-[#596B3A] text-xs font-bold text-white hover:bg-[#43522B] transition-colors"
-              >
-                Close Provenance Viewer
-              </button>
-            </div>
-          </div>
-        )}
+            <span>View all medicines</span>
+            <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+          </Link>
+        </div>
       </Container>
     </section>
   );

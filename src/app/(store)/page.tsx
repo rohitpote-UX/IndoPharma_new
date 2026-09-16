@@ -1,47 +1,31 @@
 import React from 'react';
 import { Hero } from '@/components/home/Hero';
-import { MedicineSearch } from '@/components/home/MedicineSearch';
-import { WhyChooseUs } from '@/components/home/WhyChooseUs';
+import { SearchDiscovery } from '@/components/home/SearchDiscovery';
+import { TrustStatement } from '@/components/home/TrustStatement';
 import { FeaturedMedicines } from '@/components/home/FeaturedMedicines';
-import { HowItWorks } from '@/components/home/HowItWorks';
-import { TrustQuality } from '@/components/home/TrustQuality';
-import { TransparentPricing } from '@/components/home/TransparentPricing';
-import { SupplyStory } from '@/components/home/SupplyStory';
-import { CustomerSupport } from '@/components/home/CustomerSupport';
-import { FaqSection } from '@/components/home/FaqSection';
+import { HowItWorksPreview } from '@/components/home/HowItWorksPreview';
+import { FinalCta } from '@/components/home/FinalCta';
 
 export default function StorefrontHomePage() {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col bg-white">
       {/* 01 HERO */}
       <Hero />
 
-      {/* 02 MEDICINE SEARCH */}
-      <MedicineSearch />
+      {/* 02 MEDICINE DISCOVERY */}
+      <SearchDiscovery />
 
-      {/* 03 WHY CHOOSE US */}
-      <WhyChooseUs />
+      {/* 03 TRUST STATEMENT */}
+      <TrustStatement />
 
-      {/* 04 FEATURED MEDICINES */}
+      {/* 04 FEATURED PRODUCTS */}
       <FeaturedMedicines />
 
-      {/* 05 HOW IT WORKS */}
-      <HowItWorks />
+      {/* 05 HOW IT WORKS — SHORT PREVIEW */}
+      <HowItWorksPreview />
 
-      {/* 06 TRUST / QUALITY */}
-      <TrustQuality />
-
-      {/* 07 TRANSPARENT PRICING */}
-      <TransparentPricing />
-
-      {/* 08 MANUFACTURER / SUPPLY STORY */}
-      <SupplyStory />
-
-      {/* 09 CUSTOMER SUPPORT */}
-      <CustomerSupport />
-
-      {/* 10 FAQ */}
-      <FaqSection />
+      {/* 06 FINAL CTA */}
+      <FinalCta />
     </div>
   );
 }
