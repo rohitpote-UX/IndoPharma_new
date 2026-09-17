@@ -37,16 +37,22 @@ enum PrescriptionStatus {
 enum OrderStatus {
   PENDING_PRESCRIPTION
   UNDER_CLINICAL_REVIEW
-  CONFIRMED_PICKING
+  PAYMENT_PROCESSING          // Payment intent created, awaiting provider confirmation
+  PAYMENT_FAILED              // Payment definitively failed
+  CONFIRMED_PICKING           // Payment verified; order picked for dispatch
   EXPORT_CUSTOMS
   IN_TRANSIT_AIR
   US_CUSTOMS_CLEARANCE
   DOMESTIC_DELIVERY
   DELIVERED
   CANCELLED
+  REFUND_PENDING
+  PARTIALLY_REFUNDED
   REFUNDED
 }
 
+// Legacy PaymentStatus — kept for PaymentTransaction backwards compatibility.
+// New code uses InternalPaymentStatus on the Payment model.
 enum PaymentStatus {
   DRAFT
   REQUIRES_PAYMENT_METHOD
@@ -57,6 +63,61 @@ enum PaymentStatus {
   CANCELED
   REFUNDED
   FAILED
+}
+
+// Full normalized payment status for Phase 15+ Payment model.
+enum InternalPaymentStatus {
+  CREATED               // Payment record created; no provider action yet
+  REQUIRES_ACTION       // Awaiting 3DS / OTP / additional customer step
+  PENDING               // Submitted to provider; awaiting async confirmation
+  AUTHORIZED            // Funds reserved; awaiting capture
+  CAPTURE_PENDING       // Capture requested; awaiting provider confirmation
+  CAPTURED              // Funds successfully captured
+  SUCCEEDED             // Payment fully settled (synonym for CAPTURED in some flows)
+  FAILED                // Definitively failed — no retry without new payment
+  CANCELLED             // Cancelled before capture (e.g., Rx rejected, user abort)
+  PARTIALLY_REFUNDED    // One or more partial refunds applied
+  REFUNDED              // Full refund settled
+  DISPUTED              // Chargeback / dispute opened by cardholder
+  CHARGEBACK            // Chargeback confirmed by provider
+  UNKNOWN               // State cannot be determined; requires reconciliation
+}
+
+enum RefundStatus {
+  REQUESTED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum WebhookProcessingStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  SKIPPED_DUPLICATE
+}
+
+enum ReconciliationStatus {
+  MATCHED
+  MISMATCH
+  MISSING_INTERNAL
+  MISSING_PROVIDER
+  AMOUNT_MISMATCH
+  CURRENCY_MISMATCH
+  STATUS_MISMATCH
+  RESOLVED
+  UNDER_INVESTIGATION
+}
+
+enum RiskStatus {
+  NOT_ASSESSED
+  LOW
+  MEDIUM
+  HIGH
+  BLOCKED
+  REVIEW_REQUIRED
 }
 
 enum ShipmentStage {
@@ -357,6 +418,8 @@ model Order {
   items              OrderItem[]
   paymentTransaction PaymentTransaction?
   shipment           Shipment?
+  payment            Payment?            @relation("OrderPayment")    // Phase 15
+  refunds            Refund[]            @relation("OrderRefunds")    // Phase 15
 
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
@@ -654,3 +717,303 @@ model CheckoutSession {
   @@index([status])
 }
 
+// ==============================================================================
+// PHASE 15 — PAYMENT ARCHITECTURE
+// Provider-agnostic, secure, extensible payment infrastructure.
+// All models below are additive — no existing tables were modified or removed.
+// ==============================================================================
+
+// ------------------------------------------------------------------------------
+// PaymentProviderConfig — Configuration-driven provider registry
+// ------------------------------------------------------------------------------
+
+model PaymentProviderConfig {
+  id                        String    @id @default(uuid())
+  code                      String    @unique  // e.g. "mock", "checkout-com", "adyen"
+  name                      String             // Human-readable provider name
+  environment               String    @default("sandbox")  // "sandbox" | "production"
+  enabled                   Boolean   @default(false)
+
+  // Capability flags
+  supportsCards             Boolean   @default(true)
+  supportsAuthorization     Boolean   @default(true)
+  supportsCapture           Boolean   @default(true)
+  supportsRefunds           Boolean   @default(true)
+  supportsPartialRefunds    Boolean   @default(true)
+  supportsWebhooks          Boolean   @default(true)
+  supportsInternational     Boolean   @default(false)
+  supportsCrossBorder       Boolean   @default(false)
+  supportsChargebacks       Boolean   @default(false)
+
+  // Geography & currency constraints
+  supportedCurrencies       String[]
+  supportedCountries        String[]
+  settlementCurrency        String    @default("USD")
+  merchantCountry           String    @default("IN")
+
+  // Pharmaceutical-specific eligibility metadata.
+  // These fields record the RESULT of a human-verified compliance process.
+  pharmaCategoryApproved    Boolean   @default(false)
+  pharmaCategoryNotes       String?
+  crossBorderNotes          String?
+
+  captureMode               String    @default("manual")
+  webhookEndpointPath       String?
+
+  payments                  Payment[]
+
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([code])
+  @@index([enabled])
+}
+
+// ------------------------------------------------------------------------------
+// Payment — Internal payment record (1:1 with Order initially)
+// ------------------------------------------------------------------------------
+
+model Payment {
+  id                    String                @id @default(uuid())
+  paymentNumber         String                @unique
+
+  orderId               String                @unique
+  order                 Order                 @relation("OrderPayment", fields: [orderId], references: [id])
+
+  userId                String
+
+  providerId            String
+  provider              PaymentProviderConfig  @relation(fields: [providerId], references: [code])
+
+  status                InternalPaymentStatus @default(CREATED)
+  riskStatus            RiskStatus            @default(NOT_ASSESSED)
+
+  // Monetary — always integer minor units (e.g. 12500 = $125.00 USD)
+  amountMinorUnits      Int
+  capturedMinorUnits    Int                   @default(0)
+  refundedMinorUnits    Int                   @default(0)
+  currency              String
+
+  // Provider correlation IDs
+  providerPaymentId     String?
+  providerClientToken   String?               // Safe client token for frontend only (NOT secret key)
+
+  captureMode           String                @default("manual")
+
+  authorizedAt          DateTime?
+  capturedAt            DateTime?
+  failedAt              DateTime?
+  cancelledAt           DateTime?
+  expiresAt             DateTime?
+
+  idempotencyKey        String?               @unique
+  failureCode           String?
+  failureMessage        String?
+
+  metadata              Json?
+
+  // Relations
+  attempts              PaymentAttempt[]
+  refunds               Refund[]
+  webhookEvents         WebhookEvent[]
+  reconciliationRecords ReconciliationRecord[]
+  auditEvents           PaymentAuditEvent[]
+
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([providerPaymentId])
+  @@index([paymentNumber])
+}
+
+// ------------------------------------------------------------------------------
+// PaymentAttempt — Individual provider attempt per payment
+// ------------------------------------------------------------------------------
+
+model PaymentAttempt {
+  id                         String                @id @default(uuid())
+  attemptNumber              Int
+
+  paymentId                  String
+  payment                    Payment               @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  providerId                 String
+  operation                  String    // "CREATE_INTENT" | "AUTHORIZE" | "CAPTURE" | "REFUND" | "STATUS_CHECK"
+  status                     InternalPaymentStatus
+
+  providerAttemptId          String?
+  requestedAmountMinorUnits  Int?
+  responseAmountMinorUnits   Int?
+  currency                   String?
+
+  startedAt                  DateTime              @default(now())
+  completedAt                DateTime?
+  durationMs                 Int?
+
+  errorCode                  String?
+  errorMessage               String?
+
+  metadata                   Json?
+
+  createdAt                  DateTime              @default(now())
+
+  @@index([paymentId])
+  @@index([status])
+  @@index([providerAttemptId])
+}
+
+// ------------------------------------------------------------------------------
+// Refund — Per-refund record with enforced amount tracking
+// ------------------------------------------------------------------------------
+
+model Refund {
+  id                String        @id @default(uuid())
+  refundNumber      String        @unique
+
+  paymentId         String
+  payment           Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  orderId           String
+  order             Order         @relation("OrderRefunds", fields: [orderId], references: [id], onDelete: Restrict)
+
+  amountMinorUnits  Int
+  currency          String
+
+  providerRefundId  String?       @unique
+  providerId        String
+
+  reason            String  // "PRESCRIPTION_REJECTED" | "CUSTOMER_CANCELLATION" | "CUSTOMS_NON_DELIVERY" | "SUSPECTED_FRAUD" | "ADMIN_DISCRETION"
+  notes             String?       @db.Text
+
+  status            RefundStatus  @default(REQUESTED)
+  requestedBy       String        // userId of staff member or "SYSTEM"
+  requestedByRole   String
+  completedAt       DateTime?
+  failureReason     String?
+
+  idempotencyKey    String?       @unique
+
+  metadata          Json?
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([paymentId])
+  @@index([orderId])
+  @@index([status])
+  @@index([providerRefundId])
+}
+
+// ------------------------------------------------------------------------------
+// WebhookEvent — Idempotent store for all provider webhook deliveries
+// @@unique([provider, providerEventId]) prevents duplicate processing.
+// ------------------------------------------------------------------------------
+
+model WebhookEvent {
+  id                  String                  @id @default(uuid())
+
+  provider            String
+  providerEventId     String
+  eventType           String
+  normalizedEventType String?
+
+  paymentId           String?
+  payment             Payment?                @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  processingStatus    WebhookProcessingStatus @default(RECEIVED)
+  receivedAt          DateTime                @default(now())
+  processedAt         DateTime?
+  processingError     String?
+
+  signatureVerified   Boolean                 @default(false)
+  payloadHash         String?
+
+  rawPayload          Json?
+
+  createdAt           DateTime                @default(now())
+
+  @@unique([provider, providerEventId])
+  @@index([provider])
+  @@index([paymentId])
+  @@index([processingStatus])
+  @@index([receivedAt])
+}
+
+// ------------------------------------------------------------------------------
+// ReconciliationRecord — Tracks internal vs. provider discrepancies
+// Do NOT silently auto-correct financial mismatches. Flag for investigation.
+// ------------------------------------------------------------------------------
+
+model ReconciliationRecord {
+  id                        String                @id @default(uuid())
+
+  provider                  String
+  providerTransactionId     String?
+  internalPaymentId         String?
+  payment                   Payment?              @relation(fields: [internalPaymentId], references: [id], onDelete: SetNull)
+
+  internalAmountMinorUnits  Int?
+  providerAmountMinorUnits  Int?
+  differenceMinorUnits      Int?
+  currency                  String?
+
+  internalStatus            String?
+  providerStatus            String?
+
+  reconciliationStatus      ReconciliationStatus
+  detectedAt                DateTime              @default(now())
+  resolvedAt                DateTime?
+  resolutionNotes           String?               @db.Text
+  resolvedBy                String?
+
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+
+  @@index([provider])
+  @@index([internalPaymentId])
+  @@index([reconciliationStatus])
+  @@index([detectedAt])
+}
+
+// ------------------------------------------------------------------------------
+// PaymentAuditEvent — Immutable financial audit trail (payment-specific)
+// NEVER log: API keys, webhook secrets, card numbers, CVV, credentials.
+// ------------------------------------------------------------------------------
+
+model PaymentAuditEvent {
+  id                String    @id @default(uuid())
+
+  paymentId         String?
+  payment           Payment?  @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  orderId           String?
+  attemptId         String?
+  refundId          String?
+  webhookEventId    String?
+  requestId         String?
+
+  action            String    // e.g. "PAYMENT_CREATED", "PAYMENT_CAPTURED", "REFUND_REQUESTED"
+  previousStatus    String?
+  newStatus         String?
+
+  actor             String?   // userId, "SYSTEM", "WEBHOOK", "RECONCILIATION"
+  actorRole         String?
+  ipAddress         String?
+
+  providerId        String?
+  providerEventId   String?
+
+  amountMinorUnits  Int?
+  currency          String?
+  metadata          Json?
+
+  timestamp         DateTime  @default(now())
+
+  @@index([paymentId])
+  @@index([orderId])
+  @@index([action])
+  @@index([actor])
+  @@index([timestamp])
+}

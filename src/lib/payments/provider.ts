@@ -1,153 +1,91 @@
 /**
  * ==============================================================================
- * INDOPHARM — PAYMENT PROVIDER FACTORY & MOCK ADAPTER
+ * INDOPHARM — PAYMENT ADAPTER FACTORY
  * ==============================================================================
- * Isolates mock processing from production environments.
+ * Resolves the configured PaymentProviderAdapter by reading PAYMENT_PROVIDER
+ * from the environment. The adapter is chosen at server startup — NEVER at
+ * request time based on client input.
+ *
+ * Architecture rule:
+ *   Only PaymentService should call getPaymentAdapter().
+ *   Checkout, order, and frontend code must NEVER call this directly.
+ *
+ * Provider onboarding:
+ *   1. Implement PaymentProviderAdapter interface
+ *   2. Add a new case to the switch below
+ *   3. Complete the provider onboarding checklist (docs/PAYMENT_PROVIDER_ONBOARDING.md)
  * ==============================================================================
  */
 
-import {
-  PaymentProvider,
-  PaymentIntent,
-  RefundRequest,
-  RefundResult,
-  WebhookEvent,
-  PaymentVerificationResult,
-  CreateIntentParams,
-} from './types';
+import type { PaymentProviderAdapter } from './types';
+import { MockPaymentAdapter } from './adapters/mock/adapter';
+
+// Legacy provider interface for backwards compatibility
+export { MockPaymentAdapter as MockPaymentProvider } from './adapters/mock/adapter';
+export type { PaymentProvider } from './types';
+
+// ---------------------------------------------------------------------------
+// Singleton adapter instance — initialized once per server process
+// ---------------------------------------------------------------------------
+let _adapterInstance: PaymentProviderAdapter | null = null;
 
 /**
- * Mock development payment provider.
- * Simulates authorizations, captures, cancellations, and refunds in local dev.
+ * Returns the configured PaymentProviderAdapter singleton.
+ *
+ * Configuration:
+ *   PAYMENT_PROVIDER=mock         → MockPaymentAdapter (dev/test only)
+ *   PAYMENT_PROVIDER=checkout-com → CheckoutComAdapter (not yet implemented)
+ *   (future)                      → add cases as adapters are built
+ *
+ * Throws in production if an unsupported or mock provider is configured.
  */
-export class MockPaymentProvider implements PaymentProvider {
-  readonly providerId = 'mock-development-gateway';
-  private intents: Map<string, PaymentIntent> = new Map();
-
-  async createPaymentIntent(params: CreateIntentParams): Promise<PaymentIntent> {
-    const intentId = `mock_pi_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const intent: PaymentIntent = {
-      id: intentId,
-      externalId: `ext_${intentId}`,
-      amount: params.amount,
-      currency: params.currency.toUpperCase(),
-      status: 'REQUIRES_PAYMENT_METHOD',
-      orderId: params.orderId,
-      customerId: params.customerId,
-      clientSecret: `mock_secret_${intentId}`,
-      capturedAmount: 0,
-      refundedAmount: 0,
-      metadata: params.metadata || {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    this.intents.set(intentId, intent);
-    return intent;
+export function getPaymentAdapter(): PaymentProviderAdapter {
+  if (_adapterInstance) {
+    return _adapterInstance;
   }
 
-  async authorizePayment(paymentIntentId: string): Promise<PaymentIntent> {
-    const intent = this.intents.get(paymentIntentId);
-    if (!intent) {
-      throw new Error(`[MockPaymentProvider] PaymentIntent not found: ${paymentIntentId}`);
+  const provider = (process.env.PAYMENT_PROVIDER || 'mock').toLowerCase().trim();
+
+  switch (provider) {
+    case 'mock': {
+      // MockPaymentAdapter constructor already throws in production
+      _adapterInstance = new MockPaymentAdapter();
+      break;
     }
 
-    intent.status = 'AUTHORIZED';
-    intent.updatedAt = new Date();
-    this.intents.set(paymentIntentId, intent);
-    return intent;
-  }
+    // Future provider integrations are added here.
+    // Each must:
+    //  1. Implement PaymentProviderAdapter
+    //  2. Be verified as suitable for IndoPharma's pharmaceutical MCC
+    //  3. Complete the provider onboarding checklist
 
-  async capturePayment(paymentIntentId: string, amount?: number): Promise<PaymentIntent> {
-    const intent = this.intents.get(paymentIntentId);
-    if (!intent) {
-      throw new Error(`[MockPaymentProvider] PaymentIntent not found: ${paymentIntentId}`);
-    }
-
-    if (intent.status !== 'AUTHORIZED') {
-      throw new Error(`[MockPaymentProvider] Cannot capture payment in status: ${intent.status}`);
-    }
-
-    intent.status = 'CAPTURED';
-    intent.capturedAmount = amount ?? intent.amount;
-    intent.updatedAt = new Date();
-    this.intents.set(paymentIntentId, intent);
-    return intent;
-  }
-
-  async cancelPaymentIntent(paymentIntentId: string, reason?: string): Promise<PaymentIntent> {
-    const intent = this.intents.get(paymentIntentId);
-    if (!intent) {
-      throw new Error(`[MockPaymentProvider] PaymentIntent not found: ${paymentIntentId}`);
-    }
-
-    intent.status = 'CANCELED';
-    intent.errorMessage = reason || 'Canceled by operator';
-    intent.updatedAt = new Date();
-    this.intents.set(paymentIntentId, intent);
-    return intent;
-  }
-
-  async processRefund(request: RefundRequest): Promise<RefundResult> {
-    const intent = this.intents.get(request.paymentIntentId);
-    if (!intent) {
-      throw new Error(`[MockPaymentProvider] PaymentIntent not found: ${request.paymentIntentId}`);
-    }
-
-    const refundAmount = request.amount ?? intent.capturedAmount;
-    intent.refundedAmount += refundAmount;
-    if (intent.refundedAmount >= intent.capturedAmount) {
-      intent.status = 'REFUNDED';
-    }
-    intent.updatedAt = new Date();
-
-    return {
-      refundId: `mock_ref_${Date.now()}`,
-      paymentIntentId: request.paymentIntentId,
-      amount: refundAmount,
-      currency: intent.currency,
-      status: 'SUCCEEDED',
-      createdAt: new Date(),
-    };
-  }
-
-  async verifyWebhook(
-    rawBody: string | Buffer,
-    headers: Record<string, string>
-  ): Promise<PaymentVerificationResult> {
-    const signature = headers['x-mock-signature'];
-    if (process.env.NODE_ENV === 'production' && !signature) {
-      return { isValid: false, error: 'Missing webhook signature' };
-    }
-
-    try {
-      const parsed = typeof rawBody === 'string' ? JSON.parse(rawBody) : JSON.parse(rawBody.toString('utf-8'));
-      const event: WebhookEvent = {
-        id: `evt_${Date.now()}`,
-        provider: this.providerId,
-        type: (parsed.type as string) || 'payment.authorized',
-        payload: parsed,
-        signature: signature || 'mock_sig',
-        timestamp: new Date(),
-      };
-      return { isValid: true, event };
-    } catch {
-      return { isValid: false, error: 'Invalid webhook JSON payload' };
+    default: {
+      throw new Error(
+        `[PaymentAdapterFactory] Unsupported PAYMENT_PROVIDER: "${provider}". ` +
+          'Valid options: "mock". Add new providers via the adapter interface.'
+      );
     }
   }
+
+  return _adapterInstance;
 }
 
 /**
- * Payment provider factory that resolves the configured provider adapter.
+ * @deprecated Use getPaymentAdapter() instead.
+ * Kept for backwards compatibility with existing checkoutService.ts code.
+ * Will be removed after checkout integration is updated.
  */
-export function getPaymentProvider(): PaymentProvider {
-  const provider = process.env.PAYMENT_PROVIDER || 'mock';
+export function getPaymentProvider() {
+  return getPaymentAdapter();
+}
 
-  switch (provider.toLowerCase()) {
-    case 'mock':
-      return new MockPaymentProvider();
-    default:
-      console.warn(`[PaymentProvider] Unsupported provider "${provider}". Falling back to MockPaymentProvider.`);
-      return new MockPaymentProvider();
+/**
+ * Resets the adapter singleton — for use in tests ONLY.
+ * Never call in application code.
+ */
+export function _resetPaymentAdapterForTesting(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[PaymentAdapterFactory] _resetPaymentAdapterForTesting cannot be called in production');
   }
+  _adapterInstance = null;
 }

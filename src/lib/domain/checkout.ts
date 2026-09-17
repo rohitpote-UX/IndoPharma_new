@@ -18,6 +18,7 @@ export type CheckoutStep =
   | 'PAYMENT'
   | 'REVIEW'
   | 'PROCESSING'
+  | 'PAYMENT_PROCESSING'  // Phase 15: Payment intent created, awaiting webhook confirmation
   | 'CONFIRMED'
   | 'FAILED'
   | 'EXPIRED';
@@ -105,4 +106,8 @@ export interface OrderConfirmationResult {
   estimatedDeliveryDays: string;
   requiresPrescriptionReview: boolean;
   placedAt: string;
+  // Phase 15: Payment fields
+  paymentId?: string;                  // Internal PaymentService payment ID
+  paymentStatus?: string;              // InternalPaymentStatus
+  providerClientToken?: string | null; // Safe token for payment UI (NOT a secret key)
 }
