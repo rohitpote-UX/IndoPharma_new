@@ -3,14 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, User, ShoppingBag, Menu, X, ArrowUpRight } from 'lucide-react';
+import { Search, User, ShoppingBag, Menu, X, ArrowUpRight, Globe } from 'lucide-react';
 import { SearchOverlay } from '@/components/navigation/SearchOverlay';
+import { useDestination } from '@/lib/context/DestinationContext';
 
 export function Header() {
   const pathname = usePathname();
+  const { destination, setDestinationCountry, availableCountries } = useDestination();
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     function handleScroll() {
@@ -19,6 +23,24 @@ export function Header() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Fetch active cart item count
+  useEffect(() => {
+    async function loadCartCount() {
+      try {
+        const res = await fetch(`/api/cart?country=${destination.countryCode}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setCartCount(json.data.itemCount || 0);
+          }
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    loadCartCount();
+  }, [destination.countryCode, pathname]);
 
   const navLinks = [
     { label: 'Medicines', href: '/medicines' },
@@ -85,7 +107,6 @@ export function Header() {
                     }`}
                   >
                     <span>{item.label}</span>
-                    {/* Subtle 200–300ms green indicator reveal / active indicator */}
                     <span
                       className={`absolute bottom-0 left-0 h-[2px] w-full bg-[#2F5D3A] rounded-full origin-left transition-transform duration-250 ease-out ${
                         active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
@@ -96,43 +117,57 @@ export function Header() {
               })}
             </nav>
 
-            {/* RIGHT: Search, Account, Cart */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Premium Compact Search Action */}
+            {/* RIGHT: Destination Selector, Search, Account, Cart */}
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              {/* Destination Selector Pill */}
+              <div className="hidden sm:flex items-center gap-1.5 h-10 px-2.5 rounded-full border border-[#E6ECE7] bg-[#F3F7F3] text-xs">
+                <Globe className="w-3.5 h-3.5 text-[#2F5D3A]" />
+                <select
+                  value={destination.countryCode}
+                  onChange={(e) => setDestinationCountry(e.target.value)}
+                  className="bg-transparent font-semibold text-[#111411] cursor-pointer focus:outline-hidden text-xs"
+                  aria-label="Select delivery destination country"
+                >
+                  {availableCountries.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code === 'US' ? '🇺🇸 US' : c.code === 'IN' ? '🇮🇳 IN' : c.code === 'GB' ? '🇬🇧 GB' : '🇨🇦 CA'} ({c.currency})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Search Action */}
               <Link
                 href="/search"
                 aria-label="Search Catalog"
-                className={`flex h-10 sm:h-11 items-center gap-2 sm:gap-2.5 rounded-full border border-[#E6ECE7] bg-[#FFFFFF] px-3.5 sm:px-4 text-xs font-medium transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#2F5D3A] ${
+                className={`flex h-10 sm:h-11 items-center gap-2 rounded-full border border-[#E6ECE7] bg-[#FFFFFF] px-3.5 sm:px-4 text-xs font-medium transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-[#2F5D3A] ${
                   isActive('/search')
                     ? 'border-[#2F5D3A] text-[#2F5D3A] bg-[#F3F7F3]'
                     : 'text-[#59605A] hover:border-[#2F5D3A]/40 hover:bg-[#F3F7F3] hover:text-[#111411]'
                 }`}
               >
                 <Search className="h-3.5 w-3.5 text-[#2F5D3A]" />
-                <span className="hidden sm:inline">Search medicines</span>
-                <kbd className="hidden lg:inline-block rounded border border-[#E6ECE7] bg-[#F3F7F3] px-1.5 py-0.5 text-[10px] font-mono text-[#848D85]">
-                  ⌘K
-                </kbd>
+                <span className="hidden md:inline">Search</span>
               </Link>
 
-              {/* Clean Account Utility */}
+              {/* Account Portal */}
               <Link
                 href="/account"
                 aria-label="Account Portal"
-                className={`hidden sm:flex h-10 sm:h-11 px-3 items-center gap-1.5 rounded-full border border-[#E6ECE7] bg-white text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[#2F5D3A] ${
+                className={`hidden lg:flex h-10 sm:h-11 px-3 items-center gap-1.5 rounded-full border border-[#E6ECE7] bg-white text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[#2F5D3A] ${
                   isActive('/account')
                     ? 'border-[#2F5D3A] text-[#2F5D3A] bg-[#F3F7F3]'
                     : 'text-[#59605A] hover:border-[#D3DDD5] hover:text-[#111411] hover:bg-[#F3F7F3]'
                 }`}
               >
                 <User className="h-4 w-4" />
-                <span className="hidden lg:inline">Account</span>
+                <span className="hidden xl:inline">Account</span>
               </Link>
 
-              {/* Clean Lucide Cart */}
+              {/* Cart with Live Count */}
               <Link
                 href="/cart"
-                aria-label="Cart (0 items)"
+                aria-label={`Cart (${cartCount} items)`}
                 className={`relative flex h-10 sm:h-11 items-center gap-1.5 rounded-full border border-[#E6ECE7] bg-white px-3 sm:px-3.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[#2F5D3A] ${
                   isActive('/cart')
                     ? 'border-[#2F5D3A] text-[#2F5D3A] bg-[#F3F7F3]'
@@ -142,7 +177,7 @@ export function Header() {
                 <ShoppingBag className="h-4 w-4 text-[#2F5D3A]" />
                 <span className="hidden sm:inline text-xs font-medium">Cart</span>
                 <span className="flex h-4 w-4 sm:h-4.5 sm:w-4.5 items-center justify-center rounded-full bg-[#2F5D3A] text-[10px] font-bold text-white ml-0.5">
-                  0
+                  {cartCount}
                 </span>
               </Link>
 
@@ -189,6 +224,21 @@ export function Header() {
               </nav>
 
               <div className="pt-2 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between p-2.5 rounded-xl border border-[#E6ECE7] bg-[#F3F7F3] text-xs">
+                  <span className="text-[#59605A]">Shipping Destination:</span>
+                  <select
+                    value={destination.countryCode}
+                    onChange={(e) => setDestinationCountry(e.target.value)}
+                    className="font-semibold text-[#111411] bg-white px-2 py-1 rounded border border-[#E6ECE7]"
+                  >
+                    {availableCountries.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name} ({c.currency})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <Link
                   href="/search"
                   onClick={handleMobileNavClick}
@@ -197,17 +247,12 @@ export function Header() {
                   <Search className="h-4 w-4" />
                   <span>Search All Medications</span>
                 </Link>
-
-                <div className="text-center text-[11px] text-[#59605A] pt-1">
-                  Pharmacist Support: 1-800-555-INDO
-                </div>
               </div>
             </div>
           )}
         </header>
       </div>
 
-      {/* Search Overlay */}
       <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );

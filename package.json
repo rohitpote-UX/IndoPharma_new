@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "npx -y tsx tests/eligibility_and_checkout.test.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {

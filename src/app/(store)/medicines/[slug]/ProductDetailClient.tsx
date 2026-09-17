@@ -1,313 +1,360 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import {
-  Pill,
-  ShoppingBag,
-  ShieldCheck,
-  Building2,
-  FileCheck,
-  AlertCircle,
-  Truck,
-  ChevronRight,
-  ArrowRight,
-} from 'lucide-react';
+import { Product, ProductPassportData } from '@/lib/domain/product';
+import { ProductEligibilityResult, EligibilityStatus } from '@/lib/domain/eligibility';
 import { Container } from '@/components/ui/Container';
-import { Badge } from '@/components/ui/Badge';
-import { CatalogProduct, MOCK_CATALOG } from '@/lib/mock/catalog';
-import { formatCurrency } from '@/utils/formatters';
+import { ProductHeader } from '@/components/pharmacy/ProductHeader';
+import { ProductPrice } from '@/components/pharmacy/ProductPrice';
+import { ProductAvailability } from '@/components/pharmacy/ProductAvailability';
+import { ProductEligibilityBadge } from '@/components/pharmacy/ProductEligibilityBadge';
+import { ProductInformation } from '@/components/pharmacy/ProductInformation';
+import { ProductDocuments } from '@/components/pharmacy/ProductDocuments';
+import { ShippingEligibility } from '@/components/pharmacy/ShippingEligibility';
+import { ProductFAQ } from '@/components/pharmacy/ProductFAQ';
+import { RelatedProducts } from '@/components/pharmacy/RelatedProducts';
+import { ProductPassport } from '@/components/pharmacy/ProductPassport';
+import { useDestination } from '@/lib/context/DestinationContext';
+import {
+  ChevronRight,
+  Pill,
+  ShieldCheck,
+  Layers,
+  X,
+  ShoppingCart,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 
 interface ProductDetailClientProps {
-  product: CatalogProduct;
+  product: Product;
+  allProducts: Product[];
 }
 
-export function ProductDetailClient({ product }: ProductDetailClientProps) {
-  const [quantity, setQuantity] = useState(1);
-  const [addedToCart, setAddedToCart] = useState(false);
+export function ProductDetailClient({ product, allProducts }: ProductDetailClientProps) {
+  const { destination, setDestinationCountry } = useDestination();
 
-  // Related products (other medicines from same or different category)
-  const related = MOCK_CATALOG.filter((p) => p.id !== product.id).slice(0, 3);
+  const [eligibility, setEligibility] = useState<ProductEligibilityResult | null>(null);
+  const [passportData, setPassportData] = useState<ProductPassportData | null>(null);
+  const [isPassportModalOpen, setIsPassportModalOpen] = useState(false);
+  const [isPassportLoading, setIsPassportLoading] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [cartSuccessMessage, setCartSuccessMessage] = useState<string | null>(null);
+  const [cartErrorMessage, setCartErrorMessage] = useState<string | null>(null);
 
-  const handleAddToCart = () => {
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 3000);
+  // Evaluate product eligibility whenever destination changes
+  useEffect(() => {
+    let cancelled = false;
+
+    async function runEligibilityCheck() {
+      try {
+        const res = await fetch('/api/eligibility/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: product.id,
+            destination: {
+              countryCode: destination.countryCode,
+              jurisdictionCode: destination.jurisdictionCode,
+            },
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (!cancelled && json.success && json.data) {
+            setEligibility(json.data);
+          }
+        }
+      } catch (err) {
+        console.error('Eligibility check error:', err);
+      }
+    }
+
+    void runEligibilityCheck();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [product.id, destination.countryCode, destination.jurisdictionCode]);
+
+  // Load Passport data on demand or modal open
+  const loadPassport = async () => {
+    if (passportData) {
+      setIsPassportModalOpen(true);
+      return;
+    }
+    setIsPassportLoading(true);
+    try {
+      const res = await fetch(`/api/products/${product.slug}/passport?destination=${destination.countryCode}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setPassportData(json.data);
+          setIsPassportModalOpen(true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load Product Passport:', err);
+    } finally {
+      setIsPassportLoading(false);
+    }
   };
 
+  // Add to cart with server-side validation
+  const handleAddToCart = async () => {
+    setIsAddingToCart(true);
+    setCartSuccessMessage(null);
+    setCartErrorMessage(null);
+
+    try {
+      const res = await fetch('/api/cart/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: 1,
+          destinationCountry: destination.countryCode,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setCartSuccessMessage('Product added to your cart.');
+        setTimeout(() => setCartSuccessMessage(null), 5000);
+      } else {
+        setCartErrorMessage(json.error || 'This product cannot be added to your cart.');
+      }
+    } catch (err) {
+      console.error('Failed to add to cart:', err);
+      setCartErrorMessage('A network error occurred. Please try again.');
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  const activeBatch = product.batches[0] || null;
+  const currentStatus: EligibilityStatus = eligibility?.status || (product.stockStatus as EligibilityStatus);
+
   return (
-    <div className="bg-white min-h-screen py-10 sm:py-14">
+    <div className="bg-white min-h-screen py-8 sm:py-12">
       <Container>
         {/* Breadcrumbs */}
-        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[#59605A] pb-8">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-[#59605A] pb-6 sm:pb-8">
           <Link href="/" className="hover:text-[#2F5D3A] transition-colors">
             Home
           </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-[#848D85]" />
+          <ChevronRight className="h-3.5 w-3.5 text-neutral-300" />
           <Link href="/medicines" className="hover:text-[#2F5D3A] transition-colors">
             Medicines
           </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-[#848D85]" />
+          <ChevronRight className="h-3.5 w-3.5 text-neutral-300" />
           <span className="text-[#111411] font-medium truncate">{product.name}</span>
         </nav>
 
-        {/* Top Split: Visual Packaging + Purchase Hierarchy */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start pb-16 border-b border-[#E6ECE7]">
-          {/* LEFT: Product Visual Packaging Render (6 Columns) */}
+        {/* 2-Column Opening: Visual Packaging Render (Left) + Purchase Hierarchy (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start pb-14 border-b border-[#E6ECE7]">
+          {/* LEFT: 6 Columns Visual Presentation */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="relative aspect-[4/3] w-full rounded-2xl bg-[#F3F7F3] border border-[#E6ECE7] flex flex-col items-center justify-center p-8 sm:p-12 overflow-hidden shadow-xs">
-              <div className="flex h-28 w-28 sm:h-32 sm:w-32 items-center justify-center rounded-3xl bg-white border border-[#E6ECE7] text-[#2F5D3A] shadow-sm">
-                <Pill className="h-14 w-14 sm:h-16 sm:w-16" />
+            {/* Visual Packaging Box */}
+            <div className="relative aspect-[4/3] w-full rounded-2xl bg-[#F3F7F3] border border-[#E6ECE7] flex flex-col items-center justify-center p-8 overflow-hidden shadow-xs">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white border border-[#E6ECE7] flex items-center justify-center text-[#2F5D3A] shadow-sm">
+                <Pill className="w-12 h-12 sm:w-14 sm:h-14" />
               </div>
-              <div className="mt-4 text-center space-y-1">
-                <span className="text-xs font-mono font-bold text-[#2F5D3A]">
-                  SERIAL LOT: {product.batch.lotNumber}
+
+              <div className="mt-5 text-center space-y-1">
+                <span className="text-xs font-mono font-bold text-[#2F5D3A] block">
+                  {activeBatch ? `SERIAL LOT: ${activeBatch.lotNumber}` : 'BATCH SERIALIZATION PENDING'}
                 </span>
-                <div className="text-xs text-[#59605A]">{product.manufacturer.name}</div>
+                <span className="text-xs text-[#59605A] block">
+                  {product.manufacturer.name}
+                </span>
               </div>
+
+              {/* Status Badge */}
               <div className="absolute top-4 right-4">
-                <Badge variant="green" size="md">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-white border border-[#E6ECE7] text-[#111411]">
                   {product.strength}
-                </Badge>
+                </span>
               </div>
             </div>
 
-            {/* Assay & QC Micro-Badge */}
-            <div className="rounded-xl border border-[#E6ECE7] bg-white p-4 flex items-center justify-between text-xs text-[#59605A]">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-[#2F5D3A]" />
-                <span>HPLC Assayed Purity: <strong className="text-[#2F5D3A]">{product.batch.assayPurity}%</strong></span>
+            {/* Assay and Trust Bar */}
+            <div className="bg-white border border-[#E6ECE7] rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-[#2F5D3A]">
+                <ShieldCheck className="w-4 h-4 text-[#2F5D3A]" />
+                <span>
+                  HPLC Purity Assay:{' '}
+                  <strong>{activeBatch?.assayPurity ? `${activeBatch.assayPurity}%` : 'On file'}</strong>
+                </span>
               </div>
-              <span className="text-[#848D85]">Verified WHO-GMP Facility</span>
-            </div>
-          </div>
-
-          {/* RIGHT: Product Information & Purchase Configurator (6 Columns) */}
-          <div className="lg:col-span-6 space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="green" size="sm">
-                  Available for Prescription Order
-                </Badge>
-                <span className="text-xs text-[#59605A]">• {product.category}</span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#111411]">
-                {product.name}
-              </h1>
-              <p className="text-sm font-medium text-[#59605A]">
-                {product.brandReferenceName}
-              </p>
+              <span className="text-[#59605A]">
+                {product.manufacturer.whoGmpCertified ? 'WHO-GMP Audited' : 'Verified Facility'}
+              </span>
             </div>
 
-            {/* Price & Savings Callout */}
-            <div className="rounded-2xl bg-[#F3F7F3] border border-[#E6ECE7] p-6 space-y-3">
-              <div className="flex items-baseline justify-between">
+            {/* Product Passport™ Direct Teaser Card */}
+            <div className="bg-[#F3F7F3]/70 rounded-xl border border-[#2F5D3A]/20 p-4.5 flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-[#2F5D3A] text-white flex items-center justify-center shrink-0">
+                  <Layers className="w-5 h-5" />
+                </div>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#2F5D3A] block">
-                    Transparent Landed Price
-                  </span>
-                  <div className="text-3xl sm:text-4xl font-black font-mono text-[#111411] mt-1">
-                    {formatCurrency(product.retailPriceUsd)}
-                    <span className="text-sm font-normal text-[#59605A] ml-2">
-                      / {product.packageSize} Tablets (3-Month Supply)
-                    </span>
+                  <div className="text-xs font-mono font-bold tracking-wider text-[#2F5D3A] uppercase">
+                    PROVENANCE ARCHITECTURE
+                  </div>
+                  <div className="text-sm font-semibold text-[#111411]">
+                    Product Passport™
+                  </div>
+                  <div className="text-xs text-[#59605A]">
+                    Trace this batch across 9 verified supply-chain milestones.
                   </div>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#E6ECE7] flex items-center justify-between text-xs">
-                <span className="text-[#848D85] line-through">
-                  U.S. Cash Retail Price: {formatCurrency(product.usAverageCashPrice)}
-                </span>
-                <span className="font-bold text-[#2F5D3A]">
-                  Save {formatCurrency(product.usAverageCashPrice - product.retailPriceUsd)} (
-                  {Math.round(((product.usAverageCashPrice - product.retailPriceUsd) / product.usAverageCashPrice) * 100)}%)
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={loadPassport}
+                disabled={isPassportLoading}
+                className="px-3.5 py-2 rounded-lg bg-white border border-[#2F5D3A]/30 text-xs font-semibold text-[#2F5D3A] hover:bg-[#2F5D3A] hover:text-white transition-all shrink-0 cursor-pointer shadow-xs"
+              >
+                {isPassportLoading ? 'Loading...' : 'View Passport™'}
+              </button>
             </div>
+          </div>
 
-            {/* Purchase Conditions Alert */}
-            <div className="rounded-xl border border-[#E6ECE7] bg-white p-4 space-y-2 text-xs text-[#59605A]">
-              <div className="flex items-center gap-2 font-semibold text-[#111411]">
-                <AlertCircle className="h-4 w-4 text-[#2F5D3A]" />
-                <span>Required Purchase Conditions</span>
-              </div>
-              <ul className="space-y-1.5 pl-6 list-disc text-[#59605A]">
-                <li>Valid U.S. physician prescription strictly required prior to dispensing.</li>
-                <li>Limited to standard 90-day personal maintenance supply (FDA CPG 110.300).</li>
-                <li>Dispensed directly through verified international CDSCO-cleared air transit.</li>
-              </ul>
-            </div>
+          {/* RIGHT: 6 Columns Product Header, Eligibility, Pricing & Add to Cart */}
+          <div className="lg:col-span-6 space-y-5">
+            <ProductHeader product={product} />
 
-            {/* Quantity & Add to Cart */}
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center border border-[#E6ECE7] rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="h-12 w-12 flex items-center justify-center text-[#111411] hover:bg-[#F3F7F3] cursor-pointer"
-                  >
-                    -
-                  </button>
-                  <span className="h-12 w-12 flex items-center justify-center font-mono font-bold text-sm text-[#111411]">
-                    {quantity}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.min(3, q + 1))}
-                    className="h-12 w-12 flex items-center justify-center text-[#111411] hover:bg-[#F3F7F3] cursor-pointer"
-                  >
-                    +
-                  </button>
+            {/* Destination-Aware Eligibility Engine Badge */}
+            <ProductEligibilityBadge
+              status={currentStatus}
+              destination={destination}
+              reason={eligibility?.reason}
+              onDestinationChange={(c) => setDestinationCountry(c)}
+            />
+
+            <ProductPrice
+              retailPriceUsd={product.retailPriceUsd}
+              usAverageCashPrice={product.usAverageCashPrice}
+              packageSize={product.packageSize}
+              unit={product.dosageForm}
+            />
+
+            <ProductAvailability
+              status={currentStatus === 'DESTINATION_RESTRICTED' || currentStatus === 'NOT_AVAILABLE' ? 'NOT_ELIGIBLE' : product.stockStatus}
+              requiresPrescription={product.requiresPrescription}
+              destination={destination.countryName}
+              onAddToCart={handleAddToCart}
+            />
+
+            {/* Cart Status Feedback Alerts */}
+            {cartSuccessMessage && (
+              <div className="p-3.5 rounded-xl bg-[#F3F7F3] border border-[#2F5D3A]/30 flex items-center justify-between gap-3 text-xs text-[#2F5D3A] animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#2F5D3A] shrink-0" />
+                  <span>{cartSuccessMessage}</span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddToCart}
-                  className="flex-1 h-12 px-8 rounded-xl bg-[#2F5D3A] text-sm font-semibold text-white hover:bg-[#24482D] transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                <Link
+                  href="/cart"
+                  className="font-semibold underline hover:text-[#3F704A] shrink-0"
                 >
-                  <ShoppingBag className="h-4 w-4" />
-                  <span>{addedToCart ? 'Added to Cart ✓' : `Add 90-Day Supply (${formatCurrency(product.retailPriceUsd * quantity)})`}</span>
-                </button>
+                  View Cart &rarr;
+                </Link>
               </div>
+            )}
 
-              {addedToCart && (
-                <div className="flex items-center justify-between text-xs text-[#2F5D3A] bg-[#F3F7F3] p-3 rounded-xl border border-[#E6ECE7]">
-                  <span>Item added to cart. Valid prescription verified at checkout.</span>
-                  <Link href="/cart" className="font-semibold underline">
-                    View Cart →
-                  </Link>
-                </div>
-              )}
-            </div>
+            {cartErrorMessage && (
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-xs text-rose-800 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{cartErrorMessage}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Detailed Information Tabs / Accordion Content */}
-        <div className="py-16 border-b border-[#E6ECE7] space-y-12">
-          <div className="max-w-3xl space-y-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#2F5D3A] block">
-              Clinical & Technical Provenance
+        {/* Detailed Sections: Information, Documents, Shipping, FAQs */}
+        <div className="py-14 space-y-10 border-b border-[#E6ECE7]">
+          <div className="max-w-3xl space-y-1">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider text-[#2F5D3A]">
+              CLINICAL & COMPLIANCE DOSSIER
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111411]">
-              Product & Manufacturing Specifications
+            <h2 className="text-2xl sm:text-3xl font-serif text-[#111411]">
+              Specifications, Quality Records & Delivery
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-            {/* Box 1: Formulation & Indication */}
-            <div className="rounded-2xl border border-[#E6ECE7] bg-white p-6 sm:p-8 space-y-4">
-              <h3 className="text-lg font-bold text-[#111411] flex items-center gap-2">
-                <FileCheck className="h-5 w-5 text-[#2F5D3A]" />
-                <span>Formulation Information</span>
-              </h3>
-              <div className="space-y-3 text-xs sm:text-sm text-[#59605A] leading-relaxed">
-                <div>
-                  <strong className="text-[#111411] block">Generic Active Molecule:</strong>
-                  <span>{product.activeIngredient}</span>
-                </div>
-                <div>
-                  <strong className="text-[#111411] block">Dosage Form & Strength:</strong>
-                  <span>{product.dosageForm} • {product.strength}</span>
-                </div>
-                <div>
-                  <strong className="text-[#111411] block">Therapeutic Indication:</strong>
-                  <span>{product.description}</span>
-                </div>
-                <div>
-                  <strong className="text-[#111411] block">Storage Conditions:</strong>
-                  <span>{product.storageConditions}</span>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {/* Left Column: Product Information */}
+            <div className="space-y-6">
+              <ProductInformation product={product} />
+              <ProductDocuments documents={product.documents} />
             </div>
 
-            {/* Box 2: Origin & Audit Verification */}
-            <div className="rounded-2xl border border-[#E6ECE7] bg-white p-6 sm:p-8 space-y-4">
-              <h3 className="text-lg font-bold text-[#111411] flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-[#2F5D3A]" />
-                <span>Manufacturer & Laboratory Provenance</span>
-              </h3>
-              <div className="space-y-3 text-xs sm:text-sm text-[#59605A] leading-relaxed">
-                <div>
-                  <strong className="text-[#111411] block">Audited Manufacturing Plant:</strong>
-                  <span>{product.manufacturer.name} • {product.manufacturer.facilityCity}, {product.manufacturer.facilityState}</span>
-                </div>
-                <div>
-                  <strong className="text-[#111411] block">CDSCO Export License:</strong>
-                  <span className="font-mono text-[#111411]">{product.manufacturer.cdscoLicense}</span>
-                </div>
-                {product.manufacturer.usFdaFeiNumber && (
-                  <div>
-                    <strong className="text-[#111411] block">US-FDA FEI Registry Identifier:</strong>
-                    <span className="font-mono text-[#111411]">{product.manufacturer.usFdaFeiNumber}</span>
-                  </div>
-                )}
-                <div>
-                  <strong className="text-[#111411] block">Batch Quality Sign-Off:</strong>
-                  <span>{product.batch.qcOfficer} • Lot Expiry: {product.batch.expirationDate}</span>
-                </div>
-              </div>
+            {/* Right Column: Shipping Eligibility & FAQ */}
+            <div className="space-y-6">
+              <ShippingEligibility
+                eligibilities={product.shippingEligibilities}
+                currentDestination={destination.countryCode}
+                onDestinationChange={(dest) => setDestinationCountry(dest)}
+              />
+              <ProductFAQ product={product} />
             </div>
-          </div>
-
-          {/* Shipping & Customs Guidance */}
-          <div className="rounded-2xl border border-[#E6ECE7] bg-[#F3F7F3] p-6 sm:p-8 space-y-3">
-            <div className="flex items-center gap-2 font-bold text-base text-[#111411]">
-              <Truck className="h-5 w-5 text-[#2F5D3A]" />
-              <span>International Delivery & Customs Assurance</span>
-            </div>
-            <p className="text-xs sm:text-sm text-[#59605A] leading-relaxed">
-              Dispatched via temperature-monitored air transit from accredited Indian export hubs.
-              Average transit time: 10–14 business days. All shipments include full parcel tracking and are
-              covered by our complete Customs Clearance Guarantee.
-            </p>
           </div>
         </div>
 
-        {/* Related Maintenance Therapies */}
-        <div className="pt-16 space-y-8">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111411]">
-              Related Maintenance Therapies
-            </h3>
-            <Link href="/medicines" className="text-xs font-semibold text-[#2F5D3A] hover:underline">
-              View All Medicines →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {related.map((item) => (
-              <Link
-                key={item.id}
-                href={`/medicines/${item.slug}`}
-                className="group rounded-2xl border border-[#E6ECE7] bg-white p-5 space-y-4 hover:border-[#2F5D3A]/40 transition-colors shadow-[0_2px_12px_rgba(0,0,0,0.02)]"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#59605A] truncate">{item.category}</span>
-                  <Badge variant="green" size="sm">
-                    {item.strength}
-                  </Badge>
-                </div>
-                <div>
-                  <h4 className="font-bold text-base text-[#111411] group-hover:text-[#2F5D3A] transition-colors">
-                    {item.name}
-                  </h4>
-                  <p className="text-xs text-[#59605A] mt-0.5">{item.brandReferenceName}</p>
-                </div>
-                <div className="pt-3 border-t border-[#E6ECE7] flex items-center justify-between text-xs">
-                  <span className="font-bold font-mono text-sm text-[#111411]">
-                    {formatCurrency(item.retailPriceUsd)}
-                  </span>
-                  <span className="text-[#2F5D3A] font-semibold flex items-center gap-1">
-                    <span>View</span>
-                    <ArrowRight className="h-3 w-3" />
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
+        {/* Related Products */}
+        <div className="pt-14">
+          <RelatedProducts currentProduct={product} allProducts={allProducts} />
         </div>
       </Container>
+
+      {/* Product Passport Modal */}
+      {isPassportModalOpen && passportData && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Product Passport"
+        >
+          <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setIsPassportModalOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/20 text-white hover:bg-white/40 transition-colors cursor-pointer"
+              aria-label="Close passport modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <ProductPassport
+              passport={passportData}
+              isModal={true}
+              onClose={() => setIsPassportModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Mobile CTA Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E6ECE7] p-4 shadow-lg flex items-center justify-between gap-4">
+        <div>
+          <span className="text-[10px] text-[#59605A] uppercase tracking-wider block">Landed Price</span>
+          <span className="text-lg font-bold text-[#111411]">
+            ${product.retailPriceUsd.toFixed(2)}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          disabled={isAddingToCart || currentStatus === 'DESTINATION_RESTRICTED' || currentStatus === 'NOT_AVAILABLE'}
+          onClick={handleAddToCart}
+          className="flex-1 max-w-[240px] h-11 px-5 rounded-xl bg-[#2F5D3A] text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-[#3F704A] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ShoppingCart className="w-3.5 h-3.5" />
+          <span>{isAddingToCart ? 'Adding...' : product.requiresPrescription ? 'Prescription Order' : 'Add to Cart'}</span>
+        </button>
+      </div>
     </div>
   );
 }

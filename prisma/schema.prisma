@@ -132,6 +132,18 @@ model Address {
 // Sourcing, Products & Quality Provenance
 // ------------------------------------------------------------------------------
 
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+}
+
 model Manufacturer {
   id                      String    @id @default(uuid())
   name                    String    @unique
@@ -150,6 +162,7 @@ model Manufacturer {
 
 model Product {
   id                    String             @id @default(uuid())
+  sku                   String             @unique @default(cuid())
   name                  String             // Generic active name (e.g. "Atorvastatin Calcium")
   brandReferenceName    String             // e.g. "Generic for Lipitor"
   slug                  String             @unique
@@ -160,6 +173,8 @@ model Product {
   ndcEquivalent         String?            // Reference U.S. NDC mapping
   description           String             @db.Text
   storageConditions     String             @default("Store at 20°C to 25°C (68°F to 77°F)")
+  countryOfOrigin       String             @default("India")
+  stockStatus           String             @default("AVAILABLE") // AVAILABLE, LOW_STOCK, OUT_OF_STOCK, REGULATORY_REVIEW, NOT_ELIGIBLE, PRESCRIPTION_REQUIRED
   
   // Transparent Pricing Model (USD)
   fobPriceUsd           Decimal            @db.Decimal(10, 2) // Origin manufacturing cost
@@ -173,17 +188,30 @@ model Product {
 
   manufacturerId        String
   manufacturer          Manufacturer       @relation(fields: [manufacturerId], references: [id])
+  
+  categoryId            String?
+  category              Category?          @relation(fields: [categoryId], references: [id])
 
   // Relations
   batchCertificates     BatchCertificate[]
+  productDocuments      ProductDocument[]
+  regulatoryRecords     RegulatoryRecord[]
+  shippingEligibilities ShippingEligibility[]
+  productFaqs           ProductFAQ[]
   orderItems            OrderItem[]
+  productEligibilities  ProductEligibility[]
+  cartItems             CartItem[]
 
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 
   @@index([slug])
+  @@index([sku])
+  @@index([name])
+  @@index([brandReferenceName])
   @@index([activeIngredient])
   @@index([manufacturerId])
+  @@index([categoryId])
 }
 
 model BatchCertificate {
@@ -204,6 +232,66 @@ model BatchCertificate {
 
   @@index([productId])
   @@index([lotNumber])
+}
+
+model ProductDocument {
+  id                 String   @id @default(uuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type               String   // "COA", "SPECIFICATION", "MANUFACTURER_LICENSE", "PACKAGING_INSERT", "REGULATORY"
+  title              String
+  fileUrl            String
+  verificationStatus String   @default("VERIFIED") // "VERIFIED", "PENDING_AUDIT", "UNVERIFIED"
+  uploadedAt         DateTime @default(now())
+
+  createdAt          DateTime @default(now())
+
+  @@index([productId])
+  @@index([type])
+}
+
+model RegulatoryRecord {
+  id           String    @id @default(uuid())
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  jurisdiction String    // e.g. "US_FDA", "IN_CDSCO", "UK_MHRA"
+  status       String    // e.g. "CPG_110_300_PERSONAL_USE", "EXPORT_CLEARED", "SCHEDULE_H_RESTRICTED"
+  reference    String    // Statutory citation or certificate number
+  verifiedAt   DateTime  @default(now())
+  expiresAt    DateTime?
+
+  createdAt    DateTime  @default(now())
+
+  @@index([productId])
+  @@index([jurisdiction])
+}
+
+model ShippingEligibility {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  destination String   // e.g. "US", "IN", "CA", "GB"
+  status      String   // "AVAILABLE", "RESTRICTED", "REVIEW_REQUIRED", "NOT_AVAILABLE"
+  reason      String?  // Legal/operational explanation for status
+  updatedAt   DateTime @updatedAt
+
+  createdAt   DateTime @default(now())
+
+  @@index([productId])
+  @@index([destination])
+}
+
+model ProductFAQ {
+  id           String   @id @default(uuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  question     String
+  answer       String   @db.Text
+  displayOrder Int      @default(0)
+
+  createdAt    DateTime @default(now())
+
+  @@index([productId])
 }
 
 // ------------------------------------------------------------------------------
@@ -414,3 +502,155 @@ model AuditLog {
   @@index([resourceType, resourceId])
   @@index([timestamp])
 }
+
+// ------------------------------------------------------------------------------
+// Multi-Country, Jurisdiction & Operational Product Eligibility Engine
+// ------------------------------------------------------------------------------
+
+model Country {
+  id                   String               @id @default(uuid())
+  code                 String               @unique // e.g. "US", "IN", "GB", "CA"
+  name                 String               // e.g. "United States", "India"
+  currency             String               @default("USD") // e.g. "USD", "INR"
+  phoneCode            String?              // e.g. "+1", "+91"
+  isActive             Boolean              @default(true)
+
+  jurisdictions        Jurisdiction[]
+  productEligibilities ProductEligibility[]
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model Jurisdiction {
+  id                   String               @id @default(uuid())
+  countryId            String
+  country              Country              @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  code                 String               @unique // e.g. "US-CA", "US-NY", "IN-MH"
+  name                 String               // e.g. "California", "New York", "Maharashtra"
+  type                 String               @default("STATE") // "STATE", "PROVINCE", "TERRITORY"
+  isActive             Boolean              @default(true)
+
+  productEligibilities ProductEligibility[]
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([countryId])
+  @@index([code])
+}
+
+model ProductEligibility {
+  id                   String        @id @default(uuid())
+  productId            String
+  product              Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  countryId            String
+  country              Country       @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  jurisdictionId       String?
+  jurisdiction         Jurisdiction? @relation(fields: [jurisdictionId], references: [id], onDelete: SetNull)
+
+  status               String        // "ELIGIBLE", "REVIEW_REQUIRED", "PRESCRIPTION_REQUIRED", "VERIFICATION_REQUIRED", "DESTINATION_RESTRICTED", "OUT_OF_STOCK", "FULFILLMENT_UNAVAILABLE", "NOT_AVAILABLE"
+  prescriptionRequired Boolean       @default(true)
+  verificationRequired Boolean       @default(false)
+  shippingAllowed      Boolean       @default(true)
+  fulfillmentAllowed   Boolean       @default(true)
+  maxSupplyDays        Int           @default(90) // e.g. 90-day maintenance personal importation limit
+  reason               String?       // Legal or business operational rationale
+
+  effectiveFrom        DateTime      @default(now())
+  effectiveUntil       DateTime?
+  lastReviewedAt       DateTime      @default(now())
+  reviewedBy           String?       // Compliance officer ID or system tag
+
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([productId])
+  @@index([countryId])
+  @@index([jurisdictionId])
+  @@index([status])
+}
+
+// ------------------------------------------------------------------------------
+// Cart & Session Architecture
+// ------------------------------------------------------------------------------
+
+model Cart {
+  id                         String            @id @default(uuid())
+  sessionToken               String            @unique
+  userId                     String?
+  destinationCountryCode     String            @default("US")
+  destinationJurisdictionCode String?
+  status                     String            @default("ACTIVE") // "ACTIVE", "CONVERTED", "EXPIRED", "ABANDONED"
+
+  items                      CartItem[]
+  checkoutSessions           CheckoutSession[]
+
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+
+  @@index([sessionToken])
+  @@index([userId])
+  @@index([status])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+}
+
+// ------------------------------------------------------------------------------
+// Checkout Session & State Machine
+// ------------------------------------------------------------------------------
+
+model CheckoutSession {
+  id                         String    @id @default(uuid())
+  cartId                     String
+  cart                       Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  sessionToken               String
+  userId                     String?
+  status                     String    @default("CUSTOMER_INFO") // "CUSTOMER_INFO", "ADDRESS", "PRESCRIPTION", "VERIFICATION", "SHIPPING", "PAYMENT", "REVIEW", "PROCESSING", "COMPLETED", "EXPIRED"
+
+  currency                   String    @default("USD")
+  destinationCountryCode     String    @default("US")
+  destinationJurisdictionCode String?
+
+  subtotalUsd                Decimal   @db.Decimal(10, 2)
+  shippingUsd                Decimal   @db.Decimal(10, 2)
+  estimatedTaxUsd            Decimal   @db.Decimal(10, 2) @default(0.00)
+  totalUsd                   Decimal   @db.Decimal(10, 2)
+
+  eligibilitySnapshot        Json?
+  customerInfo               Json?
+  shippingAddress            Json?
+  shippingMethod             Json?
+  prescriptionRef            String?
+  verificationRef            String?
+
+  idempotencyKey             String    @unique
+  orderId                    String?   @unique
+
+  expiresAt                  DateTime
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  @@index([cartId])
+  @@index([sessionToken])
+  @@index([idempotencyKey])
+  @@index([status])
+}
+

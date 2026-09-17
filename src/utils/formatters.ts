@@ -5,12 +5,16 @@
  */
 
 /**
- * Formats a numeric value into a USD currency string.
+ * Formats a numeric value into a localized currency string.
+ * Defaults to USD, supports INR, GBP, CAD, EUR, etc.
  */
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  const curr = (currency || 'USD').toUpperCase();
+  const locale = curr === 'INR' ? 'en-IN' : 'en-US';
+
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'USD',
+    currency: curr,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
