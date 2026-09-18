@@ -1,8 +1,9 @@
 // ==============================================================================
-// INDOPHARM — PRISMA SCHEMA DEFINITION
+// INDOPHARM — PRISMA SCHEMA DEFINITION (PHASE 16 DATABASE ARCHITECTURE)
 // ==============================================================================
 // Database: PostgreSQL 16+
-// Target: High-Integrity Cross-Border Pharmaceutical Commerce
+// Driver: @prisma/adapter-pg (PrismaPg connection pool)
+// Target: Production-Grade Pharmaceutical Commerce Database
 // ==============================================================================
 
 generator client {
@@ -13,12 +14,33 @@ datasource db {
   provider = "postgresql"
 }
 
+// ------------------------------------------------------------------------------
+// Enums
+// ------------------------------------------------------------------------------
+
 enum UserRole {
   PATIENT
   CLINICAL_PHARMACIST
   OPS_WAREHOUSE
   COMPLIANCE_ADMIN
   SUPPORT_AGENT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+  HEALTHCARE_PROFESSIONAL
+  PHARMACY
+  ORGANIZATION
 }
 
 enum AddressType {
@@ -27,11 +49,15 @@ enum AddressType {
 }
 
 enum PrescriptionStatus {
+  UPLOADED
   PENDING_REVIEW
   UNDER_REVIEW
+  MORE_INFORMATION_REQUIRED
   VERIFIED
+  APPROVED
   REJECTED
   EXPIRED
+  REVOKED
 }
 
 enum OrderStatus {
@@ -136,8 +162,35 @@ enum RewardStatus {
   EXPIRED
 }
 
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum InventoryAllocationStatus {
+  ALLOCATED
+  PICKED
+  PACKED
+  RELEASED
+}
+
 // ------------------------------------------------------------------------------
-// User & Authentication
+// User, Customer & Admin Architecture
 // ------------------------------------------------------------------------------
 
 model User {
@@ -145,14 +198,21 @@ model User {
   email            String      @unique
   passwordHash     String?
   role             UserRole    @default(PATIENT)
+  status           UserStatus  @default(ACTIVE)
   firstName        String
   lastName         String
   phone            String?     // Application-layer encrypted
   dateOfBirth      DateTime?   // Application-layer encrypted
   emailVerified    Boolean     @default(false)
+  phoneVerifiedAt  DateTime?
   twoFactorEnabled Boolean     @default(false)
+  lastLoginAt      DateTime?
 
-  // Relations
+  // Profiles (1:1 separation of authentication identity from business roles)
+  customer              Customer?
+  admin                 Admin?
+
+  // Direct Relations (preserved for backwards compatibility)
   addresses             Address[]
   orders                Order[]
   prescriptions         Prescription[]           @relation("PatientPrescriptions")
@@ -166,52 +226,151 @@ model User {
 
   @@index([email])
   @@index([role])
+  @@index([status])
+}
+
+model Customer {
+  id                  String        @id @default(uuid())
+  userId              String        @unique
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  customerType        CustomerType  @default(INDIVIDUAL)
+  companyName         String?
+  taxId               String?
+  defaultCountryId    String?
+  defaultCountry      Country?      @relation(fields: [defaultCountryId], references: [id], onDelete: SetNull)
+  isVerified          Boolean       @default(false)
+
+  // Relations
+  addresses           Address[]
+  orders              Order[]       @relation("CustomerOrders")
+  prescriptions       Prescription[] @relation("CustomerPrescriptions")
+  savedMedicines      SavedMedicine[]
+  supportTickets      SupportTicket[]
+  couponRedemptions   CouponRedemption[]
+  referralsGiven      Referral[]    @relation("ReferrerCustomer")
+  referralsReceived   Referral[]    @relation("ReferredCustomer")
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([customerType])
+  @@index([defaultCountryId])
+}
+
+model Admin {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  department  String    // "CLINICAL", "OPERATIONS", "COMPLIANCE", "FINANCE", "SUPPORT", "EXECUTIVE"
+  accessLevel String    @default("STANDARD") // "READ_ONLY", "STANDARD", "SUPER_ADMIN"
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([department])
 }
 
 model Address {
-  id          String      @id @default(uuid())
+  id          String       @id @default(uuid())
   userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        AddressType @default(SHIPPING)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerId  String?
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  type        AddressType  @default(SHIPPING)
   line1       String
   line2       String?
   city        String
   state       String
   postalCode  String
-  country     String      @default("US")
-  isDefault   Boolean     @default(false)
+  country     String       @default("US")
+  isDefault   Boolean      @default(false)
 
   orders      Order[]
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([userId])
+  @@index([customerId])
+  @@index([country])
+}
+
+// Immutable historical snapshot of addresses for each order
+model OrderAddressSnapshot {
+  id                     String    @id @default(uuid())
+  orderId                String    @unique
+  order                  Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  shippingRecipientName  String
+  shippingPhone          String?
+  shippingLine1          String
+  shippingLine2          String?
+  shippingCity           String
+  shippingState          String
+  shippingPostalCode     String
+  shippingCountry        String
+
+  billingRecipientName   String?
+  billingPhone           String?
+  billingLine1           String?
+  billingLine2           String?
+  billingCity            String?
+  billingState           String?
+  billingPostalCode      String?
+  billingCountry         String?
+
+  createdAt              DateTime  @default(now())
 }
 
 // ------------------------------------------------------------------------------
-// Sourcing, Products & Quality Provenance
+// Sourcing, Products & Multi-Variant Catalog
 // ------------------------------------------------------------------------------
 
 model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  slug        String    @unique
-  description String?
-  products    Product[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                String            @id @default(uuid())
+  name              String            @unique
+  slug              String            @unique
+  description       String?
+  products          Product[]
+  productCategories ProductCategory[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@index([slug])
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  isPrimary   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@unique([productId, categoryId])
+  @@index([productId])
+  @@index([categoryId])
 }
 
 model Manufacturer {
   id                      String    @id @default(uuid())
   name                    String    @unique
+  slug                    String?   @unique
+  description             String?
   cdscoLicenseNumber      String    @unique
   usFdaRegistrationNumber String?
   facilityCity            String
   facilityState           String
+  countryId               String?
+  country                 Country?  @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  website                 String?
+  status                  String    @default("ACTIVE")
   whoGmpCertified         Boolean   @default(true)
   verifiedAt              DateTime  @default(now())
 
@@ -219,6 +378,9 @@ model Manufacturer {
 
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([status])
 }
 
 model Product {
@@ -228,22 +390,22 @@ model Product {
   brandReferenceName    String             // e.g. "Generic for Lipitor"
   slug                  String             @unique
   activeIngredient      String
-  strength              String             // e.g. "20mg"
+  strength              String             // e.g. "20mg" (canonical)
   dosageForm            String             // e.g. "Oral Tablet"
   packageSize           Int                @default(90) // Standard 90-day count
   ndcEquivalent         String?            // Reference U.S. NDC mapping
   description           String             @db.Text
   storageConditions     String             @default("Store at 20°C to 25°C (68°F to 77°F)")
   countryOfOrigin       String             @default("India")
-  stockStatus           String             @default("AVAILABLE") // AVAILABLE, LOW_STOCK, OUT_OF_STOCK, REGULATORY_REVIEW, NOT_ELIGIBLE, PRESCRIPTION_REQUIRED
+  stockStatus           String             @default("AVAILABLE")
   
-  // Transparent Pricing Model (USD)
-  fobPriceUsd           Decimal            @db.Decimal(10, 2) // Origin manufacturing cost
-  retailPriceUsd        Decimal            @db.Decimal(10, 2) // IndoPharm price to patient
-  usAverageCashPrice    Decimal            @db.Decimal(10, 2) // Reference domestic cash benchmark
+  // Transparent Pricing Model (USD) — canonical values
+  fobPriceUsd           Decimal            @db.Decimal(10, 2)
+  retailPriceUsd        Decimal            @db.Decimal(10, 2)
+  usAverageCashPrice    Decimal            @db.Decimal(10, 2)
 
   // Regulatory Constraints
-  isControlledSubstance Boolean            @default(false) // Barred if true
+  isControlledSubstance Boolean            @default(false)
   requiresPrescription  Boolean            @default(true)
   isActive              Boolean            @default(true)
 
@@ -253,7 +415,13 @@ model Product {
   categoryId            String?
   category              Category?          @relation(fields: [categoryId], references: [id])
 
-  // Relations
+  // Multi-Variant & Relations
+  variants              ProductVariant[]
+  productCategories     ProductCategory[]
+  regulatoryProfile     RegulatoryProfile?
+  batches               Batch[]
+  inventories           Inventory[]
+
   batchCertificates     BatchCertificate[]
   productDocuments      ProductDocument[]
   regulatoryRecords     RegulatoryRecord[]
@@ -262,6 +430,7 @@ model Product {
   orderItems            OrderItem[]
   productEligibilities  ProductEligibility[]
   cartItems             CartItem[]
+  savedBy               SavedMedicine[]
 
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
@@ -275,6 +444,56 @@ model Product {
   @@index([categoryId])
 }
 
+model ProductVariant {
+  id                  String             @id @default(uuid())
+  productId           String
+  product             Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku                 String             @unique
+  name                String?            // Variant descriptor (e.g. "Atorvastatin 40mg - 90 Tablets")
+  strength            String             // e.g. "40mg"
+  dosageForm          String             // e.g. "Film-Coated Tablet"
+  packSize            Int                @default(90)
+  unit                String             @default("TABLET")
+  priceMinorUnits     Int                // Integer minor units (cents)
+  currency            String             @default("USD")
+  retailPriceUsd      Decimal            @db.Decimal(10, 2)
+  fobPriceUsd         Decimal?           @db.Decimal(10, 2)
+  status              String             @default("ACTIVE") // "ACTIVE", "INACTIVE", "DISCONTINUED"
+
+  inventories         Inventory[]
+  batches             Batch[]
+  cartItems           CartItem[]
+  orderItems          OrderItem[]
+
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([productId])
+  @@index([sku])
+  @@index([status])
+}
+
+model RegulatoryProfile {
+  id                    String    @id @default(uuid())
+  productId             String    @unique
+  product               Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  classification        String    @default("PRESCRIPTION") // "OTC", "PRESCRIPTION", "SCHEDULE_H", "SCHEDULE_X"
+  prescriptionRequired  Boolean   @default(true)
+  controlledSubstance   Boolean   @default(false)
+  personalImportAllowed Boolean   @default(true) // US FDA 90-day personal importation policy (CPG 110.300)
+  maxSupplyDays         Int       @default(90)
+  regulatoryStatus      String    @default("ACTIVE")
+  fdaNdEquivalent       String?
+  cdscoScheduleClass    String?   @default("Schedule H")
+  notes                 String?   @db.Text
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([classification])
+}
+
 model BatchCertificate {
   id                  String      @id @default(uuid())
   productId           String
@@ -282,17 +501,86 @@ model BatchCertificate {
   lotNumber           String      @unique
   manufactureDate     DateTime
   expirationDate      DateTime
-  purityPercentage    Decimal     @db.Decimal(5, 2) // e.g. 99.85%
-  coaDocumentUrl      String      // Encrypted private S3 URL
+  purityPercentage    Decimal     @db.Decimal(5, 2)
+  coaDocumentUrl      String
   releasedByQcOfficer String
   releasedAt          DateTime    @default(now())
 
+  batch               Batch?
   orderItems          OrderItem[]
 
   createdAt           DateTime    @default(now())
 
   @@index([productId])
   @@index([lotNumber])
+}
+
+model Batch {
+  id                   String                 @id @default(uuid())
+  batchNumber          String
+  productId            String
+  product              Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariantId     String?
+  productVariant       ProductVariant?        @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+
+  manufactureDate      DateTime
+  expiryDate           DateTime
+  quantityManufactured Int
+  quantityRemaining    Int
+  status               String                 @default("RELEASED") // "RELEASED", "QUARANTINED", "RECALLED", "DEPLETED", "EXPIRED"
+
+  batchCertificateId   String?                @unique
+  batchCertificate     BatchCertificate?      @relation(fields: [batchCertificateId], references: [id], onDelete: SetNull)
+
+  inventories          Inventory[]
+  allocations          InventoryAllocation[]
+
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  @@unique([productId, batchNumber])
+  @@index([productId])
+  @@index([productVariantId])
+  @@index([expiryDate])
+  @@index([status])
+}
+
+model Inventory {
+  id                 String          @id @default(uuid())
+  productId          String
+  product            Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariantId   String?
+  productVariant     ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  batchId            String?
+  batch              Batch?          @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  location           String          @default("MUMBAI_CENTRAL_BONDED_HUB")
+  quantityOnHand     Int             @default(0)
+  quantityReserved   Int             @default(0)
+  quantityAvailable  Int             @default(0)
+  reorderThreshold   Int             @default(50)
+  version            Int             @default(1) // For optimistic concurrency
+
+  updatedAt          DateTime        @updatedAt
+
+  @@index([productId])
+  @@index([productVariantId])
+  @@index([batchId])
+  @@index([location])
+}
+
+model InventoryAllocation {
+  id                 String                     @id @default(uuid())
+  orderItemId        String
+  orderItem          OrderItem                  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  batchId            String
+  batch              Batch                      @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  quantityAllocated  Int
+  status             InventoryAllocationStatus  @default(ALLOCATED)
+  allocatedAt        DateTime                   @default(now())
+
+  @@index([orderItemId])
+  @@index([batchId])
 }
 
 model ProductDocument {
@@ -302,6 +590,11 @@ model ProductDocument {
   type               String   // "COA", "SPECIFICATION", "MANUFACTURER_LICENSE", "PACKAGING_INSERT", "REGULATORY"
   title              String
   fileUrl            String
+  storageKey         String?  // Secure object storage key
+  mimeType           String   @default("application/pdf")
+  fileSizeBytes      Int?
+  checksum           String?  // SHA-256 integrity hash
+  version            Int      @default(1)
   verificationStatus String   @default("VERIFIED") // "VERIFIED", "PENDING_AUDIT", "UNVERIFIED"
   uploadedAt         DateTime @default(now())
 
@@ -315,9 +608,9 @@ model RegulatoryRecord {
   id           String    @id @default(uuid())
   productId    String
   product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  jurisdiction String    // e.g. "US_FDA", "IN_CDSCO", "UK_MHRA"
-  status       String    // e.g. "CPG_110_300_PERSONAL_USE", "EXPORT_CLEARED", "SCHEDULE_H_RESTRICTED"
-  reference    String    // Statutory citation or certificate number
+  jurisdiction String
+  status       String
+  reference    String
   verifiedAt   DateTime  @default(now())
   expiresAt    DateTime?
 
@@ -331,9 +624,9 @@ model ShippingEligibility {
   id          String   @id @default(uuid())
   productId   String
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  destination String   // e.g. "US", "IN", "CA", "GB"
-  status      String   // "AVAILABLE", "RESTRICTED", "REVIEW_REQUIRED", "NOT_AVAILABLE"
-  reason      String?  // Legal/operational explanation for status
+  destination String
+  status      String
+  reason      String?
   updatedAt   DateTime @updatedAt
 
   createdAt   DateTime @default(now())
@@ -363,20 +656,29 @@ model Prescription {
   id                 String             @id @default(uuid())
   userId             String
   user               User               @relation("PatientPrescriptions", fields: [userId], references: [id], onDelete: Cascade)
+  customerId         String?
+  customer           Customer?          @relation("CustomerPrescriptions", fields: [customerId], references: [id], onDelete: SetNull)
 
   prescriberName     String
   prescriberNpi      String?            // Application-level encrypted
   prescriberState    String?
   documentUrl        String             // Encrypted private storage key
+  originalFileName   String?
   mimeType           String             @default("application/pdf")
   fileSizeBytes      Int
+  documentHash       String?            // SHA-256 integrity hash
 
   status             PrescriptionStatus @default(PENDING_REVIEW)
-  verificationNotes  String?            @db.Text
+  rejectionReasonCode String?           // Structured reason code (e.g. DOCUMENT_UNREADABLE)
+  customerMessage    String?            @db.Text // Customer-facing explanation
+  verificationNotes  String?            @db.Text // Internal staff-only notes
   verifiedByUserId   String?
   verifiedByUser     User?              @relation("PharmacistVerifications", fields: [verifiedByUserId], references: [id])
   verifiedAt         DateTime?
+  reviewedByUserId   String?
+  reviewedAt         DateTime?
   expiresAt          DateTime?
+  version            Int                @default(1)
 
   refillsAuthorized  Int                @default(3)
   refillsRemaining   Int                @default(3)
@@ -387,11 +689,25 @@ model Prescription {
   updatedAt          DateTime           @updatedAt
 
   @@index([userId])
+  @@index([customerId])
   @@index([status])
 }
 
+model SavedMedicine {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@index([productId])
+}
+
 // ------------------------------------------------------------------------------
-// Orders, Checkout & Items
+// Orders, Checkout & Items (With Historical Snapshots)
 // ------------------------------------------------------------------------------
 
 model Order {
@@ -399,6 +715,8 @@ model Order {
   orderNumber        String              @unique
   userId             String
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerId         String?
+  customer           Customer?           @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
 
   status             OrderStatus         @default(PENDING_PRESCRIPTION)
 
@@ -406,6 +724,8 @@ model Order {
   subtotalUsd        Decimal             @db.Decimal(10, 2)
   shippingUsd        Decimal             @db.Decimal(10, 2)
   dispensingFeeUsd   Decimal             @db.Decimal(10, 2)
+  discountTotalUsd   Decimal             @db.Decimal(10, 2) @default(0.00)
+  taxTotalUsd        Decimal             @db.Decimal(10, 2) @default(0.00)
   totalUsd           Decimal             @db.Decimal(10, 2)
 
   // Addresses & Prescriptions
@@ -414,42 +734,194 @@ model Order {
   prescriptionId     String?
   prescription       Prescription?       @relation(fields: [prescriptionId], references: [id])
 
+  // Coupon & Marketing
+  couponId           String?
+  coupon             Coupon?             @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponRedemption   CouponRedemption?
+
+  // Immutable Order Address Snapshot
+  addressSnapshot    OrderAddressSnapshot?
+
   // Relations
   items              OrderItem[]
   paymentTransaction PaymentTransaction?
   shipment           Shipment?
   payment            Payment?            @relation("OrderPayment")    // Phase 15
   refunds            Refund[]            @relation("OrderRefunds")    // Phase 15
+  supportTickets     SupportTicket[]
 
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
   @@index([userId])
+  @@index([customerId])
   @@index([orderNumber])
   @@index([status])
+  @@index([couponId])
 }
 
 model OrderItem {
-  id                 String            @id @default(uuid())
-  orderId            String
-  order              Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId          String
-  product            Product           @relation(fields: [productId], references: [id])
-  batchCertificateId String?
-  batchCertificate   BatchCertificate? @relation(fields: [batchCertificateId], references: [id])
+  id                   String            @id @default(uuid())
+  orderId              String
+  order                Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId            String
+  product              Product           @relation(fields: [productId], references: [id])
+  productVariantId     String?
+  productVariant       ProductVariant?   @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  batchCertificateId   String?
+  batchCertificate     BatchCertificate? @relation(fields: [batchCertificateId], references: [id])
 
-  quantity           Int               @default(1)
-  unitPriceUsd       Decimal           @db.Decimal(10, 2)
-  totalPriceUsd      Decimal           @db.Decimal(10, 2)
+  // Immutable historical purchase snapshots (Golden Database Rule: historical integrity)
+  productNameSnapshot  String?
+  skuSnapshot          String?
+  manufacturerSnapshot String?
+  batchNumberSnapshot  String?
 
-  createdAt          DateTime          @default(now())
+  quantity             Int               @default(1)
+  unitPriceUsd         Decimal           @db.Decimal(10, 2)
+  unitPriceMinorUnits  Int?              // Cents representation
+  totalPriceUsd        Decimal           @db.Decimal(10, 2)
+
+  allocations          InventoryAllocation[]
+
+  createdAt            DateTime          @default(now())
 
   @@index([orderId])
   @@index([productId])
+  @@index([productVariantId])
 }
 
 // ------------------------------------------------------------------------------
-// Gateway-Agnostic Payment Transaction Ledger
+// Marketing: Discounts, Coupons & Referrals
+// ------------------------------------------------------------------------------
+
+model Discount {
+  id                 String        @id @default(uuid())
+  name               String
+  description        String?
+  type               DiscountType  @default(PERCENTAGE)
+  value              Decimal       @db.Decimal(10, 2) // e.g. 10.00 for 10% or $10.00
+  currency           String        @default("USD")
+  minOrderAmount     Decimal?      @db.Decimal(10, 2)
+  maxDiscountAmount   Decimal?      @db.Decimal(10, 2)
+  startAt            DateTime      @default(now())
+  endAt              DateTime?
+  status             String        @default("ACTIVE") // "ACTIVE", "EXPIRED", "DISABLED"
+
+  coupons            Coupon[]
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([status])
+  @@index([startAt, endAt])
+}
+
+model Coupon {
+  id                String             @id @default(uuid())
+  code              String             @unique // Case-insensitive normalized code
+  discountId        String
+  discount          Discount           @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  usageLimit        Int?               // Total global redemptions allowed (null = unlimited)
+  usageCount        Int                @default(0) // Concurrency-safe counter
+  perCustomerLimit  Int                @default(1) // Max redemptions per customer
+  startAt           DateTime           @default(now())
+  endAt             DateTime?
+  status            String             @default("ACTIVE") // "ACTIVE", "DEPLETED", "EXPIRED", "DISABLED"
+
+  redemptions       CouponRedemption[]
+  orders            Order[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([code])
+  @@index([status])
+}
+
+model CouponRedemption {
+  id             String    @id @default(uuid())
+  couponId       String
+  coupon         Coupon    @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  customerId     String
+  customer       Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  orderId        String    @unique
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  discountAmount Decimal   @db.Decimal(10, 2)
+  redeemedAt     DateTime  @default(now())
+
+  @@index([couponId])
+  @@index([customerId])
+}
+
+model Referral {
+  id                 String        @id @default(uuid())
+  referrerCustomerId String
+  referrerCustomer   Customer      @relation("ReferrerCustomer", fields: [referrerCustomerId], references: [id], onDelete: Cascade)
+  referredCustomerId String        @unique
+  referredCustomer   Customer      @relation("ReferredCustomer", fields: [referredCustomerId], references: [id], onDelete: Cascade)
+  referralCode       String
+  rewardCreditUsd    Decimal       @db.Decimal(10, 2) @default(20.00)
+  status             RewardStatus  @default(PENDING)
+  convertedAt        DateTime?
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([referrerCustomerId])
+  @@index([referredCustomerId])
+  @@index([referralCode])
+}
+
+model ReferralReward {
+  id             String       @id @default(uuid())
+  referrerId     String
+  referrer       User         @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId String       @unique
+  referredUser   User         @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  creditUsd      Decimal      @db.Decimal(10, 2) @default(20.00)
+  status         RewardStatus @default(PENDING)
+  redeemedAt     DateTime?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([referrerId])
+  @@index([referredUserId])
+}
+
+// ------------------------------------------------------------------------------
+// Customer Support System
+// ------------------------------------------------------------------------------
+
+model SupportTicket {
+  id              String          @id @default(uuid())
+  ticketNumber    String          @unique // e.g. "TICK-2026-0001"
+  customerId      String
+  customer        Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  orderId         String?
+  order           Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  subject         String
+  description     String          @db.Text
+  priority        TicketPriority  @default(MEDIUM)
+  status          TicketStatus    @default(OPEN)
+  assignedTo      String?         // Admin userId
+  resolvedAt      DateTime?
+  resolutionNotes String?         @db.Text
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([status])
+  @@index([priority])
+  @@index([ticketNumber])
+}
+
+// ------------------------------------------------------------------------------
+// Gateway-Agnostic Payment Transaction Ledger (Legacy)
 // ------------------------------------------------------------------------------
 
 model PaymentTransaction {
@@ -482,26 +954,29 @@ model PaymentTransaction {
 // ------------------------------------------------------------------------------
 
 model Shipment {
-  id             String          @id @default(uuid())
-  orderId        String          @unique
-  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id                 String          @id @default(uuid())
+  orderId            String          @unique
+  order              Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  carrier        String          // "DHL_EXPRESS" | "FEDEX_CROSSBORDER" | "USPS"
-  trackingNumber String          @unique
-  currentStage   ShipmentStage   @default(INDIA_BONDED_HUB)
-  originCountry  String          @default("IN")
-  destinationCountry String      @default("US")
+  carrier            String          // "DHL_EXPRESS" | "FEDEX_CROSSBORDER" | "USPS"
+  service            String?         // e.g. "PRIORITY_MEDICAL_AIR"
+  trackingNumber     String          @unique
+  currentStage       ShipmentStage   @default(INDIA_BONDED_HUB)
+  originCountry      String          @default("IN")
+  destinationCountry String          @default("US")
   
-  estimatedDelivery DateTime?
-  actualDelivery    DateTime?
+  shippedAt          DateTime?
+  estimatedDelivery  DateTime?
+  actualDelivery     DateTime?
 
-  events         TrackingEvent[]
+  events             TrackingEvent[]
 
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@index([orderId])
   @@index([trackingNumber])
+  @@index([currentStage])
 }
 
 model TrackingEvent {
@@ -518,28 +993,7 @@ model TrackingEvent {
 
   @@index([shipmentId])
   @@index([eventTime])
-}
-
-// ------------------------------------------------------------------------------
-// Retention, Adherence & Referrals
-// ------------------------------------------------------------------------------
-
-model ReferralReward {
-  id             String       @id @default(uuid())
-  referrerId     String
-  referrer       User         @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
-  referredUserId String       @unique
-  referredUser   User         @relation("ReferredUser", fields: [referredUserId], references: [id], onDelete: Cascade)
-
-  creditUsd      Decimal      @db.Decimal(10, 2) @default(20.00)
-  status         RewardStatus @default(PENDING)
-  redeemedAt     DateTime?
-
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  @@index([referrerId])
-  @@index([referredUserId])
+  @@index([stage])
 }
 
 // ------------------------------------------------------------------------------
@@ -547,20 +1001,24 @@ model ReferralReward {
 // ------------------------------------------------------------------------------
 
 model AuditLog {
-  id           String   @id @default(uuid())
-  userId       String?
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userRole     String?
-  action       String   // e.g. "PRESCRIPTION_VIEWED", "ORDER_APPROVED", "EXPORT_MANIFEST_FILED"
-  resourceType String   // e.g. "Prescription", "Order", "User"
-  resourceId   String
-  ipAddress    String?
-  userAgent    String?
-  metadata     Json?
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actorUserId   String?  // Explicit actor identifier
+  userRole      String?
+  action        String   // e.g. "PRESCRIPTION_VIEWED", "ORDER_APPROVED", "INVENTORY_ADJUSTED"
+  resourceType  String   // e.g. "Prescription", "Order", "User", "Inventory"
+  resourceId    String
+  previousState Json?
+  newState      Json?
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json?
 
-  timestamp    DateTime @default(now())
+  timestamp     DateTime @default(now())
 
   @@index([userId])
+  @@index([actorUserId])
   @@index([action])
   @@index([resourceType, resourceId])
   @@index([timestamp])
@@ -574,12 +1032,15 @@ model Country {
   id                   String               @id @default(uuid())
   code                 String               @unique // e.g. "US", "IN", "GB", "CA"
   name                 String               // e.g. "United States", "India"
-  currency             String               @default("USD") // e.g. "USD", "INR"
-  phoneCode            String?              // e.g. "+1", "+91"
+  currency             String               @default("USD")
+  phoneCode            String?
   isActive             Boolean              @default(true)
 
   jurisdictions        Jurisdiction[]
   productEligibilities ProductEligibility[]
+  countryRules         CountryRule[]
+  manufacturers        Manufacturer[]
+  customers            Customer[]
 
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
@@ -588,13 +1049,41 @@ model Country {
   @@index([isActive])
 }
 
+model CountryRule {
+  id                   String    @id @default(uuid())
+  countryId            String
+  country              Country   @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  scope                String    @default("COUNTRY_WIDE") // "COUNTRY_WIDE", "CATEGORY", "PRODUCT"
+  targetId             String?   // Optional productId or categoryId
+  ruleCode             String    // e.g. "PERSONAL_IMPORT_90_DAY", "PREAUTH_REQUIRED"
+  allowed              Boolean   @default(true)
+  prescriptionRequired Boolean   @default(true)
+  shippingAllowed      Boolean   @default(true)
+  paymentAllowed       Boolean   @default(true)
+  requiresReview       Boolean   @default(false)
+  maxSupplyDays        Int       @default(90)
+  version              Int       @default(1)
+  status               String    @default("ACTIVE")
+  effectiveFrom        DateTime  @default(now())
+  effectiveTo          DateTime?
+  rationale            String?   @db.Text
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([countryId])
+  @@index([ruleCode])
+  @@index([status])
+  @@index([effectiveFrom, effectiveTo])
+}
+
 model Jurisdiction {
   id                   String               @id @default(uuid())
   countryId            String
   country              Country              @relation(fields: [countryId], references: [id], onDelete: Cascade)
   code                 String               @unique // e.g. "US-CA", "US-NY", "IN-MH"
-  name                 String               // e.g. "California", "New York", "Maharashtra"
-  type                 String               @default("STATE") // "STATE", "PROVINCE", "TERRITORY"
+  name                 String
+  type                 String               @default("STATE")
   isActive             Boolean              @default(true)
 
   productEligibilities ProductEligibility[]
@@ -615,18 +1104,18 @@ model ProductEligibility {
   jurisdictionId       String?
   jurisdiction         Jurisdiction? @relation(fields: [jurisdictionId], references: [id], onDelete: SetNull)
 
-  status               String        // "ELIGIBLE", "REVIEW_REQUIRED", "PRESCRIPTION_REQUIRED", "VERIFICATION_REQUIRED", "DESTINATION_RESTRICTED", "OUT_OF_STOCK", "FULFILLMENT_UNAVAILABLE", "NOT_AVAILABLE"
+  status               String
   prescriptionRequired Boolean       @default(true)
   verificationRequired Boolean       @default(false)
   shippingAllowed      Boolean       @default(true)
   fulfillmentAllowed   Boolean       @default(true)
-  maxSupplyDays        Int           @default(90) // e.g. 90-day maintenance personal importation limit
-  reason               String?       // Legal or business operational rationale
+  maxSupplyDays        Int           @default(90)
+  reason               String?
 
   effectiveFrom        DateTime      @default(now())
   effectiveUntil       DateTime?
   lastReviewedAt       DateTime      @default(now())
-  reviewedBy           String?       // Compliance officer ID or system tag
+  reviewedBy           String?
 
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
@@ -642,18 +1131,18 @@ model ProductEligibility {
 // ------------------------------------------------------------------------------
 
 model Cart {
-  id                         String            @id @default(uuid())
-  sessionToken               String            @unique
-  userId                     String?
-  destinationCountryCode     String            @default("US")
-  destinationJurisdictionCode String?
-  status                     String            @default("ACTIVE") // "ACTIVE", "CONVERTED", "EXPIRED", "ABANDONED"
+  id                          String            @id @default(uuid())
+  sessionToken                String            @unique
+  userId                      String?
+  destinationCountryCode      String            @default("US")
+  destinationJurisdictionCode  String?
+  status                      String            @default("ACTIVE")
 
-  items                      CartItem[]
-  checkoutSessions           CheckoutSession[]
+  items                       CartItem[]
+  checkoutSessions            CheckoutSession[]
 
-  createdAt                  DateTime          @default(now())
-  updatedAt                  DateTime          @updatedAt
+  createdAt                   DateTime          @default(now())
+  updatedAt                   DateTime          @updatedAt
 
   @@index([sessionToken])
   @@index([userId])
@@ -661,19 +1150,23 @@ model Cart {
 }
 
 model CartItem {
-  id        String   @id @default(uuid())
-  cartId    String
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity  Int      @default(1)
+  id                  String          @id @default(uuid())
+  cartId              String
+  cart                Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId           String
+  product             Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariantId    String?
+  productVariant      ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+  quantity            Int             @default(1)
+  unitPriceSnapshotUsd Decimal?       @db.Decimal(10, 2)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   @@unique([cartId, productId])
   @@index([cartId])
   @@index([productId])
+  @@index([productVariantId])
 }
 
 // ------------------------------------------------------------------------------
@@ -681,35 +1174,35 @@ model CartItem {
 // ------------------------------------------------------------------------------
 
 model CheckoutSession {
-  id                         String    @id @default(uuid())
-  cartId                     String
-  cart                       Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  sessionToken               String
-  userId                     String?
-  status                     String    @default("CUSTOMER_INFO") // "CUSTOMER_INFO", "ADDRESS", "PRESCRIPTION", "VERIFICATION", "SHIPPING", "PAYMENT", "REVIEW", "PROCESSING", "COMPLETED", "EXPIRED"
+  id                          String    @id @default(uuid())
+  cartId                      String
+  cart                        Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  sessionToken                String
+  userId                      String?
+  status                      String    @default("CUSTOMER_INFO")
 
-  currency                   String    @default("USD")
-  destinationCountryCode     String    @default("US")
-  destinationJurisdictionCode String?
+  currency                    String    @default("USD")
+  destinationCountryCode      String    @default("US")
+  destinationJurisdictionCode  String?
 
-  subtotalUsd                Decimal   @db.Decimal(10, 2)
-  shippingUsd                Decimal   @db.Decimal(10, 2)
-  estimatedTaxUsd            Decimal   @db.Decimal(10, 2) @default(0.00)
-  totalUsd                   Decimal   @db.Decimal(10, 2)
+  subtotalUsd                 Decimal   @db.Decimal(10, 2)
+  shippingUsd                 Decimal   @db.Decimal(10, 2)
+  estimatedTaxUsd             Decimal   @db.Decimal(10, 2) @default(0.00)
+  totalUsd                    Decimal   @db.Decimal(10, 2)
 
-  eligibilitySnapshot        Json?
-  customerInfo               Json?
-  shippingAddress            Json?
-  shippingMethod             Json?
-  prescriptionRef            String?
-  verificationRef            String?
+  eligibilitySnapshot         Json?
+  customerInfo                Json?
+  shippingAddress             Json?
+  shippingMethod              Json?
+  prescriptionRef             String?
+  verificationRef             String?
 
-  idempotencyKey             String    @unique
-  orderId                    String?   @unique
+  idempotencyKey              String    @unique
+  orderId                     String?   @unique
 
-  expiresAt                  DateTime
-  createdAt                  DateTime  @default(now())
-  updatedAt                  DateTime  @updatedAt
+  expiresAt                   DateTime
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
 
   @@index([cartId])
   @@index([sessionToken])
@@ -718,23 +1211,17 @@ model CheckoutSession {
 }
 
 // ==============================================================================
-// PHASE 15 — PAYMENT ARCHITECTURE
+// PHASE 15 — PAYMENT ARCHITECTURE (PRESERVED 100%)
 // Provider-agnostic, secure, extensible payment infrastructure.
-// All models below are additive — no existing tables were modified or removed.
 // ==============================================================================
-
-// ------------------------------------------------------------------------------
-// PaymentProviderConfig — Configuration-driven provider registry
-// ------------------------------------------------------------------------------
 
 model PaymentProviderConfig {
   id                        String    @id @default(uuid())
   code                      String    @unique  // e.g. "mock", "checkout-com", "adyen"
-  name                      String             // Human-readable provider name
-  environment               String    @default("sandbox")  // "sandbox" | "production"
+  name                      String
+  environment               String    @default("sandbox")
   enabled                   Boolean   @default(false)
 
-  // Capability flags
   supportsCards             Boolean   @default(true)
   supportsAuthorization     Boolean   @default(true)
   supportsCapture           Boolean   @default(true)
@@ -745,14 +1232,11 @@ model PaymentProviderConfig {
   supportsCrossBorder       Boolean   @default(false)
   supportsChargebacks       Boolean   @default(false)
 
-  // Geography & currency constraints
   supportedCurrencies       String[]
   supportedCountries        String[]
   settlementCurrency        String    @default("USD")
   merchantCountry           String    @default("IN")
 
-  // Pharmaceutical-specific eligibility metadata.
-  // These fields record the RESULT of a human-verified compliance process.
   pharmaCategoryApproved    Boolean   @default(false)
   pharmaCategoryNotes       String?
   crossBorderNotes          String?
@@ -769,10 +1253,6 @@ model PaymentProviderConfig {
   @@index([enabled])
 }
 
-// ------------------------------------------------------------------------------
-// Payment — Internal payment record (1:1 with Order initially)
-// ------------------------------------------------------------------------------
-
 model Payment {
   id                    String                @id @default(uuid())
   paymentNumber         String                @unique
@@ -788,15 +1268,13 @@ model Payment {
   status                InternalPaymentStatus @default(CREATED)
   riskStatus            RiskStatus            @default(NOT_ASSESSED)
 
-  // Monetary — always integer minor units (e.g. 12500 = $125.00 USD)
   amountMinorUnits      Int
   capturedMinorUnits    Int                   @default(0)
   refundedMinorUnits    Int                   @default(0)
   currency              String
 
-  // Provider correlation IDs
   providerPaymentId     String?
-  providerClientToken   String?               // Safe client token for frontend only (NOT secret key)
+  providerClientToken   String?
 
   captureMode           String                @default("manual")
 
@@ -812,7 +1290,6 @@ model Payment {
 
   metadata              Json?
 
-  // Relations
   attempts              PaymentAttempt[]
   refunds               Refund[]
   webhookEvents         WebhookEvent[]
@@ -829,10 +1306,6 @@ model Payment {
   @@index([paymentNumber])
 }
 
-// ------------------------------------------------------------------------------
-// PaymentAttempt — Individual provider attempt per payment
-// ------------------------------------------------------------------------------
-
 model PaymentAttempt {
   id                         String                @id @default(uuid())
   attemptNumber              Int
@@ -841,7 +1314,7 @@ model PaymentAttempt {
   payment                    Payment               @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   providerId                 String
-  operation                  String    // "CREATE_INTENT" | "AUTHORIZE" | "CAPTURE" | "REFUND" | "STATUS_CHECK"
+  operation                  String
   status                     InternalPaymentStatus
 
   providerAttemptId          String?
@@ -865,10 +1338,6 @@ model PaymentAttempt {
   @@index([providerAttemptId])
 }
 
-// ------------------------------------------------------------------------------
-// Refund — Per-refund record with enforced amount tracking
-// ------------------------------------------------------------------------------
-
 model Refund {
   id                String        @id @default(uuid())
   refundNumber      String        @unique
@@ -885,11 +1354,11 @@ model Refund {
   providerRefundId  String?       @unique
   providerId        String
 
-  reason            String  // "PRESCRIPTION_REJECTED" | "CUSTOMER_CANCELLATION" | "CUSTOMS_NON_DELIVERY" | "SUSPECTED_FRAUD" | "ADMIN_DISCRETION"
+  reason            String
   notes             String?       @db.Text
 
   status            RefundStatus  @default(REQUESTED)
-  requestedBy       String        // userId of staff member or "SYSTEM"
+  requestedBy       String
   requestedByRole   String
   completedAt       DateTime?
   failureReason     String?
@@ -906,11 +1375,6 @@ model Refund {
   @@index([status])
   @@index([providerRefundId])
 }
-
-// ------------------------------------------------------------------------------
-// WebhookEvent — Idempotent store for all provider webhook deliveries
-// @@unique([provider, providerEventId]) prevents duplicate processing.
-// ------------------------------------------------------------------------------
 
 model WebhookEvent {
   id                  String                  @id @default(uuid())
@@ -941,11 +1405,6 @@ model WebhookEvent {
   @@index([processingStatus])
   @@index([receivedAt])
 }
-
-// ------------------------------------------------------------------------------
-// ReconciliationRecord — Tracks internal vs. provider discrepancies
-// Do NOT silently auto-correct financial mismatches. Flag for investigation.
-// ------------------------------------------------------------------------------
 
 model ReconciliationRecord {
   id                        String                @id @default(uuid())
@@ -978,11 +1437,6 @@ model ReconciliationRecord {
   @@index([detectedAt])
 }
 
-// ------------------------------------------------------------------------------
-// PaymentAuditEvent — Immutable financial audit trail (payment-specific)
-// NEVER log: API keys, webhook secrets, card numbers, CVV, credentials.
-// ------------------------------------------------------------------------------
-
 model PaymentAuditEvent {
   id                String    @id @default(uuid())
 
@@ -994,11 +1448,11 @@ model PaymentAuditEvent {
   webhookEventId    String?
   requestId         String?
 
-  action            String    // e.g. "PAYMENT_CREATED", "PAYMENT_CAPTURED", "REFUND_REQUESTED"
+  action            String
   previousStatus    String?
   newStatus         String?
 
-  actor             String?   // userId, "SYSTEM", "WEBHOOK", "RECONCILIATION"
+  actor             String?
   actorRole         String?
   ipAddress         String?
 

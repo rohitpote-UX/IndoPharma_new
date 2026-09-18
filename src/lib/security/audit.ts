@@ -31,8 +31,17 @@ export interface AuditLogEntry {
     | 'PAYMENT_DISPUTED'
     | 'CUSTOMS_MANIFEST_GENERATED'
     | 'USER_LOGIN'
-    | 'USER_LOGOUT';
-  resourceType: 'Prescription' | 'Order' | 'Payment' | 'User' | 'Shipment';
+    | 'USER_LOGOUT'
+    | 'PASSWORD_RESET_REQUESTED'
+    | 'PASSWORD_RESET_COMPLETED'
+    | 'MFA_ENABLED'
+    | 'MFA_DISABLED'
+    | 'MFA_VERIFIED'
+    | 'ROLE_CHANGED'
+    | 'USER_SUSPENDED'
+    | 'USER_ACTIVATED'
+    | 'SECURITY_ALERT';
+  resourceType: 'Prescription' | 'Order' | 'Payment' | 'User' | 'Shipment' | 'Security';
   resourceId: string;
   ipAddress?: string | null;
   userAgent?: string | null;
